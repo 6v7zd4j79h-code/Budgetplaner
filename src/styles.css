@@ -96,6 +96,81 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
+/* --- Farbschema Blau ---------------------------------------------------------
+   Wird ueber data-palette="blau" am Wurzelelement gewaehlt. Die Selektoren
+   sind spezifischer als die Pflaume-Bloecke oben und gewinnen deshalb in
+   allen drei Zustaenden (hell, dunkel per System, dunkel per data-theme). */
+:root[data-palette="blau"] {
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --surface-2: #f5f8fc;
+  --border: #d9e1ec;
+  --text: #14213a;
+  --muted: #5d6a82;
+  --primary: #1f4e8c;
+  --primary-strong: #163a6b;
+  --primary-soft: #e2eaf5;
+  --on-primary: #ffffff;
+  --track: #e3e9f1;
+  --header-bg: #17325a;
+  --header-text: #ffffff;
+  --c-income: #2f7d55;
+  --c-bills: #1f4e8c;
+  --c-expenses: #3a9bbf;
+  --c-savings: #c39424;
+  --c-debts: #d0703a;
+  --c-spent: #1f4e8c;
+  --c-left: #b9cdeb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-palette="blau"]:not([data-theme="light"]) {
+    --bg: #0d131d;
+    --surface: #162030;
+    --surface-2: #1c283b;
+    --border: #2a3850;
+    --text: #e8eef7;
+    --muted: #9eacc2;
+    --primary: #7aa7e6;
+    --primary-strong: #9cbff0;
+    --primary-soft: #1d3152;
+    --on-primary: #0b1626;
+    --track: #233149;
+    --header-bg: #13284a;
+    --header-text: #e8eef7;
+    --c-income: #6cc496;
+    --c-bills: #7aa7e6;
+    --c-expenses: #5cc3dc;
+    --c-savings: #e3bd5a;
+    --c-debts: #f0a066;
+    --c-spent: #7aa7e6;
+    --c-left: #2c4a78;
+  }
+}
+
+:root[data-palette="blau"][data-theme="dark"] {
+  --bg: #0d131d;
+  --surface: #162030;
+  --surface-2: #1c283b;
+  --border: #2a3850;
+  --text: #e8eef7;
+  --muted: #9eacc2;
+  --primary: #7aa7e6;
+  --primary-strong: #9cbff0;
+  --primary-soft: #1d3152;
+  --on-primary: #0b1626;
+  --track: #233149;
+  --header-bg: #13284a;
+  --header-text: #e8eef7;
+  --c-income: #6cc496;
+  --c-bills: #7aa7e6;
+  --c-expenses: #5cc3dc;
+  --c-savings: #e3bd5a;
+  --c-debts: #f0a066;
+  --c-spent: #7aa7e6;
+  --c-left: #2c4a78;
+}
+
 * { box-sizing: border-box; }
 
 html { -webkit-text-size-adjust: 100%; }
@@ -461,3 +536,15 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
   .card { padding: 14px 12px; }
   .cash th, .cash td { font-size: 0.84rem; }
 }
+
+/* Farbwahl in den Einstellungen */
+.palettes { display: flex; flex-wrap: wrap; gap: 10px; }
+.palette-btn {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 52px; padding: 0 16px; border-radius: 12px;
+  border: 2px solid var(--border); background: var(--surface-2); cursor: pointer; font-weight: 600;
+}
+.palette-btn[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
+.swatch { display: flex; }
+.swatch span { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--surface); margin-left: -6px; }
+.swatch span:first-child { margin-left: 0; }

@@ -27,12 +27,18 @@ Erledigt:
   Monatswechsel mit Übertrag, Sicherung exportieren und auf einem
   zweiten „Gerät“ importieren. Kein Querscrollen, keine Konsolenfehler.
 
+Farben: zuerst Blau, dann auf Wunsch **Pflaume/Rosé** als Standard, dazu eine
+**blaue Variante** („Männer-Version“). Umschaltbar in der App unter „Sicherung“
+(gilt pro Gerät). Mit `VITE_FARBE=blau` beim Build startet die App blau,
+inklusive blauem Icon und blauer Statusleiste.
+
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
 
 1. Repository auf GitHub anlegen und den Code hochladen
-2. Bei Netlify verbinden (keine Umgebungsvariablen nötig)
+2. Bei Netlify verbinden (keine Umgebungsvariablen nötig; für eine zweite,
+   blaue Seite `VITE_FARBE=blau` setzen)
 3. Auf dem Handy zum Home-Bildschirm hinzufügen
 4. Echte Beträge eintragen und gleich die erste Sicherung speichern
 

@@ -9,6 +9,7 @@ import * as subs from './ui/subscriptions.js';
 import * as goals from './ui/goals.js';
 import * as settings from './ui/settings.js';
 import { backupOverdue } from './ui/settings.js';
+import { applyPalette } from './palette.js';
 
 const VIEWS = {
   overview: { module: overview, title: 'Übersicht', icon: '◔', monthly: true },
@@ -160,6 +161,7 @@ viewEl.addEventListener('keydown', (event) => {
 
 window.addEventListener('hashchange', () => { readHash(); render(); });
 
+applyPalette();
 subscribe(scheduleRender);
 load();
 readHash();

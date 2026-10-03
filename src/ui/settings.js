@@ -7,6 +7,7 @@
 import { exportJson, importJson, lastBackupAt, resetAll, store } from '../store.js';
 import { todayISO, formatDay } from '../dates.js';
 import { esc } from './dom.js';
+import { PALETTES, currentPalette, setPalette } from '../palette.js';
 
 const REMIND_AFTER_DAYS = 30;
 
@@ -23,7 +24,19 @@ export function backupOverdue() {
 
 export function render() {
   const last = lastBackupAt();
+  const active = currentPalette();
   return `
+  <article class="card">
+    <h2>Farbe</h2>
+    <div class="palettes">${PALETTES.map((p) => `
+      <button type="button" class="palette-btn" data-action="palette" data-key="${p.id}" aria-pressed="${p.id === active}">
+        <span class="swatch" aria-hidden="true">${p.swatch.map((c) => `<span style="background:${c}"></span>`).join('')}</span>
+        ${esc(p.label)}
+      </button>`).join('')}
+    </div>
+    <p class="hint" style="margin:10px 0 0">Gilt nur für dieses Gerät.</p>
+  </article>
+
   <article class="card">
     <h2>Sicherung</h2>
     <p>Alle Daten liegen <strong>nur auf diesem Gerät</strong>. Nichts wird ins Internet geschickt.
@@ -55,6 +68,10 @@ export function render() {
 }
 
 export const actions = {
+  palette(el, _event, ctx) {
+    setPalette(el.dataset.key);
+    ctx.rerender();
+  },
   export(_el, _event, ctx) {
     const blob = new Blob([exportJson()], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

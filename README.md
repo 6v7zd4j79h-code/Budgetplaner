@@ -16,7 +16,7 @@ und keinen Server, der Finanzdaten sieht. Gegen Datenverlust gibt es unter
 | **Ausgaben** | Einzelne Ausgaben buchen (Datum, Kategorie, Notiz, Betrag). Die Summen landen automatisch als Ist im Budget. „Noch übrig“ je Kategorie |
 | **Abos** | Abo-Tracker mit Kategorie und Abrechnung (monatlich, vierteljährlich, halbjährlich, jährlich), umgerechnet auf den Monat, Summe je Kategorie und im Jahr, Abos pausierbar |
 | **Sparziele** | Ziel, gespart, Fortschritt in Prozent, schnell einzahlen |
-| **Sicherung** | Sicherung als JSON-Datei speichern und wiederherstellen, Erinnerung nach 30 Tagen, alles löschen |
+| **Sicherung** | Farbe wählen (Pflaume oder Blau), Sicherung als JSON-Datei speichern und wiederherstellen, Erinnerung nach 30 Tagen, alles löschen |
 
 Monatswechsel oben im Kopf. Ein neuer Monat übernimmt die Zeilen und Budgets
 des Vormonats ohne Haken, und als Startbetrag den tatsächlichen Restbetrag
@@ -37,6 +37,10 @@ npm run dev     # http://localhost:5173
 
 1. Repository bei Netlify verbinden (*Add new site → Import an existing project*)
 2. Die Einstellungen kommen aus `netlify.toml`. Umgebungsvariablen braucht es keine.
+   Optional: `VITE_FARBE=blau` startet die App in Blau, mit blauem App-Icon
+   und blauer Statusleiste. Ohne Angabe gilt Pflaume. Für beide Varianten
+   lassen sich zwei Netlify-Seiten aus demselben Repository anlegen.
+   Umschalten lässt sich die Farbe in der App jederzeit unter „Sicherung“.
 3. Nach dem Deployment die Seite auf dem Handy öffnen und
    - **iPhone/iPad:** Safari → Teilen → „Zum Home-Bildschirm“
    - **Android:** Chrome → Menü ⋮ → „App installieren“
@@ -52,10 +56,11 @@ src/
   dates.js        Monate und Tage
   budget.js       die gesamte Rechenlogik, ohne Oberfläche
   store.js        Speicher (localStorage), Sicherung, Wiederherstellung
+  palette.js      Farbschema Pflaume oder Blau, pro Gerät
   main.js         Navigation, Monatswechsel, Ereignisse
   ui/             eine Datei pro Ansicht, dazu Diagramme (SVG) und Helfer
 tests/            node --test
-scripts/          Icons neu erzeugen
+scripts/          Icons neu erzeugen (beide Farben)
 ```
 
 Keine Laufzeit-Abhängigkeiten. Die App ist rund 45 KB groß und funktioniert offline.
