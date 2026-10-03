@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Budgetplaner</title>
+  <meta name="description" content="Persönlicher Budgetplaner – Einnahmen, Rechnungen, Ausgaben, Abos und Sparziele. Alle Daten bleiben auf dem Gerät.">
+  <meta name="theme-color" content="#2563c9">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Budget">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">€</span>
+      <span class="brand-name">Budgetplaner</span>
+    </div>
+    <div class="month-bar" id="monthBar">
+      <button type="button" class="icon-btn" id="prevMonth" aria-label="Vorheriger Monat">‹</button>
+      <button type="button" class="month-label" id="monthLabel" title="Zum aktuellen Monat"></button>
+      <button type="button" class="icon-btn" id="nextMonth" aria-label="Nächster Monat">›</button>
+    </div>
+  </header>
+
+  <nav class="nav" id="nav" aria-label="Bereiche"></nav>
+
+  <div class="banner" id="banner" role="status" hidden>
+    <span>Zeit für eine Sicherung – deine Daten liegen nur auf diesem Gerät.</span>
+    <button type="button" class="btn" id="bannerBtn">Jetzt sichern</button>
+  </div>
+
+  <main class="view" id="view"></main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

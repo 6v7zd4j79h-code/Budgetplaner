@@ -1,0 +1,16 @@
+{
+  "name": "budgetplaner",
+  "version": "1.0.0",
+  "description": "Persoenlicher Budgetplaner als PWA - Daten bleiben auf dem Geraet",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test \"tests/**/*.test.js\""
+  },
+  "devDependencies": {
+    "vite": "^8.3.0",
+    "vite-plugin-pwa": "^1.0.3"
+  }
+}
