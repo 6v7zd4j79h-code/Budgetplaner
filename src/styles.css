@@ -1,36 +1,36 @@
-/* Budgetplaner - kuehles Blau wie in der Vorlage, ruhig und gut lesbar.
+/* Budgetplaner - Pflaume und Rosé, warm, ruhig und gut lesbar.
    Alle Farben als Variablen, damit der dunkle Modus nur Werte tauscht. */
 
 :root {
   color-scheme: light;
-  --bg: #eef2f8;
+  --bg: #f6eff4;
   --surface: #ffffff;
-  --surface-2: #f5f7fb;
-  --border: #dbe2ee;
-  --text: #17223b;
-  --muted: #5f6b85;
-  --primary: #2563c9;
-  --primary-strong: #1b4fa6;
-  --primary-soft: #e3ecfb;
+  --surface-2: #fbf6f9;
+  --border: #ebdce6;
+  --text: #2a1726;
+  --muted: #77606f;
+  --primary: #8e3b77;
+  --primary-strong: #6b2d5c;
+  --primary-soft: #f5e4ef;
   --on-primary: #ffffff;
-  --pos: #12805c;
-  --neg: #c2362f;
+  --pos: #2f7d55;
+  --neg: #c0392b;
   --warn-bg: #fff4d6;
   --warn-text: #7a5300;
-  --track: #e6ebf3;
-  --header-bg: #2563c9;
+  --track: #f1e4ec;
+  --header-bg: #6b2d5c;
   --header-text: #ffffff;
 
-  --c-income: #12805c;
-  --c-bills: #2563c9;
-  --c-expenses: #0f9bb5;
-  --c-savings: #7c5cd6;
-  --c-debts: #e0782d;
-  --c-spent: #2563c9;
-  --c-left: #9ec0f2;
+  --c-income: #3f8a64;
+  --c-bills: #8e3b77;
+  --c-expenses: #d0739f;
+  --c-savings: #c39424;
+  --c-debts: #5b6fa6;
+  --c-spent: #8e3b77;
+  --c-left: #e8c3d9;
 
   --radius: 14px;
-  --shadow: 0 1px 2px rgba(23, 34, 59, 0.06), 0 4px 16px rgba(23, 34, 59, 0.05);
+  --shadow: 0 1px 2px rgba(42, 23, 38, 0.06), 0 4px 16px rgba(42, 23, 38, 0.05);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
@@ -39,60 +39,60 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0e1422;
-    --surface: #172033;
-    --surface-2: #1d283e;
-    --border: #2a3753;
-    --text: #e7ecf6;
-    --muted: #9aa6bf;
-    --primary: #6b9ef0;
-    --primary-strong: #8db4f5;
-    --primary-soft: #1f3256;
-    --on-primary: #0b1426;
-    --pos: #4cc79a;
+    --bg: #170f16;
+    --surface: #221720;
+    --surface-2: #2b1e29;
+    --border: #3e2c3a;
+    --text: #f3e9f0;
+    --muted: #b8a2b1;
+    --primary: #d98bbf;
+    --primary-strong: #eaaad4;
+    --primary-soft: #3f2338;
+    --on-primary: #22101d;
+    --pos: #6cc496;
     --neg: #f07a72;
     --warn-bg: #3a2f12;
     --warn-text: #f3d48a;
-    --track: #24314b;
-    --header-bg: #1a3266;
-    --header-text: #e7ecf6;
-    --c-income: #4cc79a;
-    --c-bills: #6b9ef0;
-    --c-expenses: #3fc3da;
-    --c-savings: #a68cf0;
-    --c-debts: #f29a58;
-    --c-spent: #6b9ef0;
-    --c-left: #2f4c7c;
+    --track: #35242f;
+    --header-bg: #4a1f40;
+    --header-text: #f3e9f0;
+    --c-income: #6cc496;
+    --c-bills: #d98bbf;
+    --c-expenses: #f29b8f;
+    --c-savings: #e3bd5a;
+    --c-debts: #93a6dc;
+    --c-spent: #d98bbf;
+    --c-left: #5a2f50;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0e1422;
-  --surface: #172033;
-  --surface-2: #1d283e;
-  --border: #2a3753;
-  --text: #e7ecf6;
-  --muted: #9aa6bf;
-  --primary: #6b9ef0;
-  --primary-strong: #8db4f5;
-  --primary-soft: #1f3256;
-  --on-primary: #0b1426;
-  --pos: #4cc79a;
+  --bg: #170f16;
+  --surface: #221720;
+  --surface-2: #2b1e29;
+  --border: #3e2c3a;
+  --text: #f3e9f0;
+  --muted: #b8a2b1;
+  --primary: #d98bbf;
+  --primary-strong: #eaaad4;
+  --primary-soft: #3f2338;
+  --on-primary: #22101d;
+  --pos: #6cc496;
   --neg: #f07a72;
   --warn-bg: #3a2f12;
   --warn-text: #f3d48a;
-  --track: #24314b;
-  --header-bg: #1a3266;
-  --header-text: #e7ecf6;
-  --c-income: #4cc79a;
-  --c-bills: #6b9ef0;
-  --c-expenses: #3fc3da;
-  --c-savings: #a68cf0;
-  --c-debts: #f29a58;
-  --c-spent: #6b9ef0;
-  --c-left: #2f4c7c;
+  --track: #35242f;
+  --header-bg: #4a1f40;
+  --header-text: #f3e9f0;
+  --c-income: #6cc496;
+  --c-bills: #d98bbf;
+  --c-expenses: #f29b8f;
+  --c-savings: #e3bd5a;
+  --c-debts: #93a6dc;
+  --c-spent: #d98bbf;
+  --c-left: #5a2f50;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
@@ -449,4 +449,15 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 
 @media (prefers-reduced-motion: reduce) {
   .meter > div { transition: none; }
+}
+
+/* Schmale Handys: Cashflow-Tabelle etwas kompakter, damit beide
+   Betragsspalten in die Karte passen. */
+@media (max-width: 420px) {
+  .cash th, .cash td { padding: 7px 2px; font-size: 0.9rem; }
+  .cash th:first-child { padding-left: 0; }
+}
+@media (max-width: 380px) {
+  .card { padding: 14px 12px; }
+  .cash th, .cash td { font-size: 0.84rem; }
 }

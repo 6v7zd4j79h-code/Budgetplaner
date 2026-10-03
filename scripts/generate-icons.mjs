@@ -17,9 +17,9 @@ function svg(size, { padding }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#6ea3f5"/>
-      <stop offset="55%" stop-color="#2563c9"/>
-      <stop offset="100%" stop-color="#1b3f87"/>
+      <stop offset="0%" stop-color="#c56fa8"/>
+      <stop offset="55%" stop-color="#8e3b77"/>
+      <stop offset="100%" stop-color="#4a1f40"/>
     </linearGradient>
   </defs>
   <rect width="${size}" height="${size}" fill="url(#bg)"/>
