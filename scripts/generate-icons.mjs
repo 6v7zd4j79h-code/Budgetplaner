@@ -31,6 +31,7 @@ function svg(size, { padding, colors }) {
 const variants = [
   { dir: 'public/icons', colors: ['#c56fa8', '#8e3b77', '#4a1f40'] },
   { dir: 'public/icons-blau', colors: ['#5b8fd6', '#1f4e8c', '#0f2342'] },
+  { dir: 'public/icons-grau', colors: ['#7d868f', '#44546a', '#22272b'] },
 ];
 const sizes = [
   { name: 'icon-192.png', size: 192, padding: 0.1 },

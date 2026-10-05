@@ -28,7 +28,7 @@ Erledigt:
   zweiten „Gerät“ importieren. Kein Querscrollen, keine Konsolenfehler.
 
 Farben: zuerst Blau, dann auf Wunsch **Pflaume/Rosé** als Standard, dazu eine
-**blaue Variante** („Männer-Version“). Umschaltbar in der App unter „Sicherung“
+**blaue Variante** („Männer-Version“) und eine **graue im Büro-Stil** (eckiger, ohne Schatten). Umschaltbar in der App unter „Sicherung“
 (gilt pro Gerät). Mit `VITE_FARBE=blau` beim Build startet die App blau,
 inklusive blauem Icon und blauer Statusleiste.
 

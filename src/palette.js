@@ -1,10 +1,11 @@
-// Farbschema: Pflaume oder Blau. Die Wahl gilt pro Geraet und liegt
+// Farbschema: Pflaume, Blau oder Grau (sachlich, Buero-Stil). Die Wahl gilt pro Geraet und liegt
 // getrennt von den Budgetdaten, damit eine Sicherung sie nicht mitnimmt.
 // Ohne eigene Wahl gilt die Vorgabe aus dem Build (VITE_FARBE).
 
 export const PALETTES = [
   { id: 'pflaume', label: 'Pflaume', themeColor: '#6b2d5c', swatch: ['#6b2d5c', '#d0739f', '#c39424'] },
   { id: 'blau', label: 'Blau', themeColor: '#17325a', swatch: ['#17325a', '#3a9bbf', '#c39424'] },
+  { id: 'grau', label: 'Grau', themeColor: '#2f3437', swatch: ['#2f3437', '#44546a', '#9aa3ab'] },
 ];
 
 const STORAGE_KEY = 'budgetplaner.palette';

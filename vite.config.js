@@ -1,12 +1,17 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Startfarbe der App: VITE_FARBE=blau (z. B. als Netlify-Umgebungsvariable)
-// liefert Blau samt blauem App-Icon, ohne Angabe gilt Pflaume. In der App
+// Startfarbe der App: VITE_FARBE=blau oder grau (z. B. als Netlify-
+// Umgebungsvariable) liefert die Farbe samt passendem App-Icon, ohne Angabe
+// gilt Pflaume. In der App
 // laesst sich die Farbe trotzdem jederzeit umstellen.
-const blau = process.env.VITE_FARBE === 'blau';
-const iconDir = blau ? 'icons-blau' : 'icons';
-const themeColor = blau ? '#17325a' : '#6b2d5c';
+const FARBEN = {
+  pflaume: { iconDir: 'icons', themeColor: '#6b2d5c', background: '#f6eff4' },
+  blau: { iconDir: 'icons-blau', themeColor: '#17325a', background: '#eef2f7' },
+  grau: { iconDir: 'icons-grau', themeColor: '#2f3437', background: '#eceef0' },
+};
+const farbe = FARBEN[process.env.VITE_FARBE] || FARBEN.pflaume;
+const { iconDir, themeColor } = farbe;
 
 export default defineConfig({
   plugins: [
@@ -29,7 +34,7 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         orientation: 'any',
-        background_color: blau ? '#eef2f7' : '#f6eff4',
+        background_color: farbe.background,
         theme_color: themeColor,
         icons: [
           { src: `${iconDir}/icon-192.png`, sizes: '192x192', type: 'image/png' },

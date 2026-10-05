@@ -22,7 +22,7 @@ und keinen Server, der Finanzdaten sieht. Gegen Datenverlust gibt es unter
 | **Kassenbon scannen** | Foto → Texterkennung auf dem Gerät (Tesseract) → Artikel prüfen, unnötige markieren, an vorhandene Buchung anhängen |
 | **Unnötig** | Ganze Ausgaben oder einzelne Artikel als unnötig markieren; Überblick mit Summe, Anteil und größten Posten. Die App merkt sich Artikel. |
 | **Budgets** | Mehrere getrennte Budgets, z. B. privat und Gemeinschaftskonto |
-| **Sicherung** | Farbe wählen (Pflaume oder Blau), Sicherung als JSON-Datei speichern und wiederherstellen, Erinnerung nach 30 Tagen, alles löschen |
+| **Sicherung** | Farbe wählen (Pflaume, Blau oder Grau im Büro-Stil), Sicherung als JSON-Datei speichern und wiederherstellen, Erinnerung nach 30 Tagen, alles löschen |
 
 Monatswechsel oben im Kopf. Ein neuer Monat übernimmt die Zeilen und Budgets
 des Vormonats ohne Haken, und als Startbetrag den tatsächlichen Restbetrag
@@ -43,7 +43,7 @@ npm run dev     # http://localhost:5173
 
 1. Repository bei Netlify verbinden (*Add new site → Import an existing project*)
 2. Die Einstellungen kommen aus `netlify.toml`. Umgebungsvariablen braucht es keine.
-   Optional: `VITE_FARBE=blau` startet die App in Blau, mit blauem App-Icon
+   Optional: `VITE_FARBE=blau` oder `VITE_FARBE=grau` startet die App in Blau bzw. Grau, mit passendem App-Icon
    und blauer Statusleiste. Ohne Angabe gilt Pflaume. Für beide Varianten
    lassen sich zwei Netlify-Seiten aus demselben Repository anlegen.
    Umschalten lässt sich die Farbe in der App jederzeit unter „Sicherung“.
