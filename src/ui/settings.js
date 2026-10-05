@@ -4,7 +4,7 @@
 // der einzige Schutz gegen verlorene Daten - die Ansicht erinnert daran,
 // wenn die letzte Sicherung lange her ist.
 
-import { exportJson, importJson, lastBackupAt, resetAll, store } from '../store.js';
+import { activeBudget, createBudget, deleteBudget, exportJson, importJson, lastBackupAt, renameBudget, resetAll, store } from '../store.js';
 import { todayISO, formatDay } from '../dates.js';
 import { esc } from './dom.js';
 import { PALETTES, currentPalette, setPalette } from '../palette.js';
@@ -25,7 +25,23 @@ export function backupOverdue() {
 export function render() {
   const last = lastBackupAt();
   const active = currentPalette();
+  const current = activeBudget();
   return `
+  <article class="card">
+    <h2>Budgets</h2>
+    <p class="hint">Getrennte Budgets, z. B. für dein Konto und das Gemeinschaftskonto. Jedes hat eigene Monate, Ausgaben, Abos und Sparziele. Umschalten oben im Kopf.</p>
+    <ul class="budget-list">${store.budgets.map((b) => `
+      <li class="budget-row${b.id === store.active ? ' active' : ''}">
+        <input type="text" data-action="budget-rename" data-key="${esc(b.id)}" value="${esc(b.name)}" aria-label="Name des Budgets">
+        ${b.id === store.active ? '<span class="pill">aktiv</span>' : `<button type="button" class="btn" data-action="budget-switch" data-key="${esc(b.id)}">Öffnen</button>`}
+        ${b.id === 'privat' ? '<span></span>' : `<button type="button" class="del" data-action="budget-delete" data-key="${esc(b.id)}" aria-label="${esc(b.name)} löschen" title="Budget löschen">×</button>`}
+      </li>`).join('')}</ul>
+    <form class="budget-add" data-action="budget-add">
+      <input type="text" name="name" placeholder="z. B. Gemeinsam" aria-label="Name des neuen Budgets" required autocomplete="off">
+      <button type="submit" class="btn">+ Neues Budget</button>
+    </form>
+  </article>
+
   <article class="card">
     <h2>Farbe</h2>
     <div class="palettes">${PALETTES.map((p) => `
@@ -38,7 +54,7 @@ export function render() {
   </article>
 
   <article class="card">
-    <h2>Sicherung</h2>
+    <h2>Sicherung${store.budgets.length > 1 ? ` · ${esc(current.name)}` : ''}</h2>
     <p>Alle Daten liegen <strong>nur auf diesem Gerät</strong>. Nichts wird ins Internet geschickt.
       Damit nichts verloren geht, wenn das Gerät kaputtgeht oder die Browserdaten gelöscht werden,
       speichere ab und zu eine Sicherungsdatei – z. B. in iCloud, Google Drive oder per Mail an dich selbst.</p>
@@ -62,12 +78,26 @@ export function render() {
 
   <article class="card danger-zone">
     <h2>Alles löschen</h2>
-    <p>Löscht alle Monate, Buchungen, Abos und Sparziele auf diesem Gerät. Vorher am besten eine Sicherung speichern.</p>
+    <p>Löscht alle Monate, Buchungen, Abos und Sparziele ${store.budgets.length > 1 ? `im Budget „${esc(current.name)}“` : 'auf diesem Gerät'}. Vorher am besten eine Sicherung speichern.</p>
     <button type="button" class="btn danger" data-action="reset">Alle Daten löschen</button>
   </article>`;
 }
 
 export const actions = {
+  'budget-add'(form, event) {
+    event.preventDefault();
+    const name = String(new FormData(form).get('name')).trim();
+    if (name) createBudget(name);
+  },
+  'budget-switch'(el) { switchBudget(el.dataset.key); },
+  'budget-rename'(el) { renameBudget(el.dataset.key, el.value.trim()); },
+  'budget-delete'(el) {
+    const budget = store.budgets.find((b) => b.id === el.dataset.key);
+    if (!budget) return;
+    if (!window.confirm(`Budget „${budget.name}“ mit allen Daten löschen?`)) return;
+    if (!window.confirm('Ganz sicher? Ohne Sicherungsdatei ist das endgültig.')) return;
+    deleteBudget(budget.id);
+  },
   palette(el, _event, ctx) {
     setPalette(el.dataset.key);
     ctx.rerender();
@@ -77,7 +107,8 @@ export const actions = {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `budgetplaner-sicherung-${todayISO()}.json`;
+    const suffix = store.budgets.length > 1 ? `-${activeBudget().id}` : '';
+    link.download = `budgetplaner${suffix}-sicherung-${todayISO()}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();

@@ -1,7 +1,7 @@
 import './styles.css';
 import { ensureMonth, monthSummary } from './budget.js';
 import { addMonths, monthKey, monthLabel } from './dates.js';
-import { load, store, subscribe, update } from './store.js';
+import { activeBudget, load, store, subscribe, switchBudget, update } from './store.js';
 import * as overview from './ui/overview.js';
 import * as plan from './ui/plan.js';
 import * as log from './ui/log.js';
@@ -36,6 +36,19 @@ const navEl = document.getElementById('nav');
 const monthEl = document.getElementById('monthLabel');
 const monthBar = document.getElementById('monthBar');
 const bannerEl = document.getElementById('banner');
+const brandName = document.getElementById('brandName');
+const budgetSelect = document.getElementById('budgetSelect');
+
+// Mehrere Budgets: Auswahl im Kopf statt des App-Namens.
+function renderBudgetSwitch() {
+  const several = store.budgets.length > 1;
+  brandName.hidden = several;
+  budgetSelect.hidden = !several;
+  if (several) {
+    budgetSelect.innerHTML = store.budgets.map((b) => `<option value="${b.id}" ${b.id === store.active ? 'selected' : ''}>${b.name.replace(/</g, '&lt;')}</option>`).join('');
+  }
+}
+budgetSelect.addEventListener('change', () => switchBudget(budgetSelect.value));
 
 function readHash() {
   const [view, key] = location.hash.replace(/^#\/?/, '').split('/');
@@ -92,9 +105,10 @@ function render() {
   ui.pendingFocus = null;
   const view = VIEWS[ui.view];
 
+  renderBudgetSwitch();
   monthEl.textContent = monthLabel(ui.key);
   monthBar.hidden = !view.monthly;
-  document.title = `${view.title} · Budgetplaner`;
+  document.title = `${view.title} · ${store.budgets.length > 1 ? activeBudget().name : 'Budgetplaner'}`;
   navEl.querySelectorAll('[data-view]').forEach((btn) => {
     btn.setAttribute('aria-current', btn.dataset.view === ui.view ? 'page' : 'false');
   });

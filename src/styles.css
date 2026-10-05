@@ -671,3 +671,17 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 .item.is-waste .item-name-input { color: var(--waste); }
 .receipt-sums { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; margin: 12px 0; font-size: 0.92rem; }
 .receipt-sums .waste-sum { margin-left: auto; color: var(--waste); }
+
+/* --- Mehrere Budgets ------------------------------------------------------------ */
+
+.budget-select {
+  min-height: 38px; max-width: 46vw; padding: 0 28px 0 10px; border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35); background-color: rgba(255, 255, 255, 0.14);
+  color: var(--header-text); font-weight: 700;
+}
+.budget-select option { color: var(--text); background: var(--surface); }
+.budget-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.budget-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 32px; gap: 8px; align-items: center; }
+.budget-row .btn { min-height: 40px; }
+.pill { padding: 4px 12px; border-radius: 99px; background: var(--primary-soft); color: var(--primary-strong); font-size: 0.85rem; font-weight: 700; }
+.budget-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
