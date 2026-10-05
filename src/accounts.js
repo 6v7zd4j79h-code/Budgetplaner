@@ -30,7 +30,10 @@ export function balancesSummary(accounts) {
   return {
     total: known.reduce((s, a) => s + a.balance, 0),
     room: known.reduce((s, a) => s + overdraftRoom(a), 0),
-    overdraftUsed: known.reduce((s, a) => s + Math.max(0, -a.balance), 0),
+    // Minus auf Konten mit Dispo-Rahmen ...
+    overdraftUsed: known.filter((a) => a.overdraft > 0).reduce((s, a) => s + Math.max(0, -a.balance), 0),
+    // ... und Minus ohne Dispo, z. B. offene Klarna-Betraege.
+    otherDebt: known.filter((a) => !(a.overdraft > 0)).reduce((s, a) => s + Math.max(0, -a.balance), 0),
     known: known.length,
   };
 }

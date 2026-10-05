@@ -43,7 +43,7 @@ export function render({ data, key }) {
     <h2>Alle Konten</h2>
     ${sum.known ? `
     <p class="account-balance ${signClass(sum.total)}">${eur(sum.total)}</p>
-    <p class="muted">Summe aller Kontostände${sum.overdraftUsed ? ` · davon ${eur(sum.overdraftUsed)} im Dispo` : ''}</p>
+    <p class="muted">Summe aller Kontostände${sum.overdraftUsed ? ` · ${eur(sum.overdraftUsed)} im Dispo` : ''}${sum.otherDebt ? ` · ${eur(sum.otherDebt)} offene Schulden` : ''}</p>
     ${sum.overdraftUsed ? `<p class="warn">Der Dispo ist Spielraum, kein Guthaben. Bis zur Grenze bleiben ${eur(sum.room)} – das zählt nicht als verfügbar.</p>` : ''}`
     : '<p class="muted">Trag bei jedem Konto den heutigen Stand aus der Banking-App ein. Der Stand am Monatsersten wird zum Startbetrag des Monats.</p>'}
   </article>

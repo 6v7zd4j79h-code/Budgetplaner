@@ -36,6 +36,9 @@ test('Dispo-Spielraum ist Kontostand plus Rahmen, nicht verfuegbares Geld', () =
   const s = balancesSummary(book().accounts);
   assert.equal(s.total, -301640);
   assert.equal(s.overdraftUsed, 303140);
+  const withKlarna = balancesSummary([...book().accounts, { id: 'k', name: 'Klarna', overdraft: 0, balance: -441394 }]);
+  assert.equal(withKlarna.overdraftUsed, 303140);
+  assert.equal(withKlarna.otherDebt, 441394);
 });
 
 test('Startbetrag aus den Kontostaenden am Monatsersten', () => {

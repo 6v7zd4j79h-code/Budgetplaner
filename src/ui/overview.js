@@ -31,6 +31,7 @@ function accountsCard(data, account) {
     <header class="section-head"><h2>Kontostände</h2><span class="section-sum ${signClass(sum.total)}">${eur(sum.total)}</span></header>
     <ul class="mini account-list">${rows}</ul>
     ${sum.overdraftUsed ? `<p class="warn">${eur(sum.overdraftUsed)} im Dispo. Der Dispo-Rahmen ist kein verfügbares Geld.</p>` : ''}
+    ${sum.otherDebt ? `<p class="warn">${eur(sum.otherDebt)} offene Schulden (z. B. Klarna).</p>` : ''}
     <button type="button" class="btn ghost" data-action="goto" data-view="accounts">Kontostände aktualisieren</button>
   </article>`;
 }
