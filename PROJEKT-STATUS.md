@@ -21,7 +21,7 @@ Erledigt:
 - Übersicht, Budget, Ausgaben-Log, Abo-Tracker, Sparziele, Sicherung
 - Startbetrag wird automatisch aus dem Ist-Rest des Vormonats übernommen
 - Heller und dunkler Modus, Handy-Layout mit Navigation unten
-- 17 Tests der Rechenlogik (`npm test`)
+- Tests der Rechenlogik (`npm test`)
 - Im Browser durchgespielt (Handy 390 px und Desktop 1280 px): Budget
   ausfüllen, abhaken, Ausgaben buchen, Abos, Sparziele, Neuladen,
   Monatswechsel mit Übertrag, Sicherung exportieren und auf einem
@@ -31,6 +31,21 @@ Farben: zuerst Blau, dann auf Wunsch **Pflaume/Rosé** als Standard, dazu eine
 **blaue Variante** („Männer-Version“). Umschaltbar in der App unter „Sicherung“
 (gilt pro Gerät). Mit `VITE_FARBE=blau` beim Build startet die App blau,
 inklusive blauem Icon und blauer Statusleiste.
+
+Am 05.10. ergänzt (Wunsch: sehen, wo Geld für Unnötiges hingeht):
+- **Kontoauszug einlesen** (CSV, nur im Browser): Sparkasse, Commerzbank,
+  Revolut, PayPal, Stripe, jede andere CSV mit Datum und Betrag (z. B.
+  PayQuicker). Vorsortieren, prüfen, lernen, keine Doppelzählung.
+  **Startbetrag** aus Saldo-Spalte, Kontostand im Dateikopf oder aus dem
+  heutigen Kontostand zurückgerechnet (Sparkasse/Commerzbank).
+- **Unnötig markieren**: ganze Buchung oder einzelne Artikel; Überblick
+  im Ausgaben-Bereich und als Kachel; App merkt sich Artikel.
+- **Kassenbon scannen** mit Texterkennung auf dem Gerät (Tesseract,
+  deutsches Sprachpaket), hängt sich an passende Buchung an.
+- **Mehrere Budgets** (z. B. Gemeinschaftskonto), getrennt gespeichert.
+- `docs/claude-am-pc.md`: Auftrag für Claude am Mac/PC, falls die
+  Auszüge dort ausgewertet werden sollen (Weg B).
+- 44 Tests; Import, Bon-Scan (mit echtem Bild), Budgets im Browser geprüft.
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 

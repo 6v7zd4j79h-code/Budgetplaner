@@ -115,9 +115,12 @@ const norm = (s) => s.toLowerCase()
 // Spaltennamen werden normalisiert verglichen (ohne Umlaute, Leerzeichen,
 // Gross/klein), damit "Begünstigter/Zahlungspflichtiger" und
 // "Beguenstigter/Zahlungspflichtiger" gleich behandelt werden.
+// account: true heisst echtes Konto mit Kontostand - PayPal und Stripe sind
+// Zwischenstationen und zaehlen fuer den Startbetrag nicht.
 const BANKS = [
   {
     id: 'sparkasse',
+    account: true,
     label: 'Sparkasse',
     detect: ['auftragskonto', 'buchungstag', 'beguenstigterzahlungspflichtiger'],
     columns: {
@@ -134,6 +137,7 @@ const BANKS = [
   },
   {
     id: 'commerzbank',
+    account: true,
     label: 'Commerzbank',
     detect: ['buchungstag', 'wertstellung', 'umsatzart', 'buchungstext'],
     columns: {
@@ -148,6 +152,7 @@ const BANKS = [
   },
   {
     id: 'revolut',
+    account: true,
     label: 'Revolut',
     detect: ['type', 'product', 'starteddate', 'completeddate', 'description'],
     altDetect: ['art', 'produkt', 'startdatum', 'abschlussdatum', 'beschreibung'],
@@ -160,6 +165,7 @@ const BANKS = [
       kind: ['type', 'art'],
       currency: ['currency', 'waehrung'],
       status: ['state', 'status'],
+      balance: ['balance', 'saldo'],
     },
     skip: (r) => r.status && !/completed|abgeschlossen/i.test(r.status),
   },
@@ -202,6 +208,7 @@ const BANKS = [
 const GENERIC = {
   id: 'csv',
   label: 'CSV',
+  account: true,
   columns: {
     date: ['buchungstag', 'buchungsdatum', 'datum', 'date', 'valuta', 'wertstellung', 'bookingdate', 'transactiondate', 'zahlungsdatum'],
     amount: ['betrag', 'betrageur', 'betraginEUR'.toLowerCase(), 'amount', 'umsatz', 'brutto', 'gross', 'value', 'summe'],
@@ -210,8 +217,22 @@ const GENERIC = {
     kind: ['typ', 'type', 'umsatzart', 'transactiontype'],
     currency: ['waehrung', 'currency'],
     status: ['status', 'state'],
+    balance: ['saldo', 'kontostand', 'balance', 'saldoeur', 'kontostandeur', 'saldonachbuchung'],
   },
 };
+
+// Kontostand aus den Zeilen ueber der Tabelle, z. B.
+// "Kontostand vom 30.09.2026:";"1.234,56 EUR" oder "Saldo";"1.234,56";"30.09.2026".
+function balanceFromPreamble(rows) {
+  for (const row of rows) {
+    const joined = row.join(' ');
+    if (!/kontostand|saldo|balance/i.test(joined)) continue;
+    const amountCell = [...row].reverse().find((c) => parseAmount(c) != null && /\d[.,]\d{2}/.test(c));
+    const dateMatch = joined.match(/\d{1,2}\.\d{1,2}\.\d{2,4}|\d{4}-\d{2}-\d{2}/);
+    if (amountCell) return { balance: parseAmount(amountCell), date: dateMatch ? parseDate(dateMatch[0]) : null };
+  }
+  return null;
+}
 
 function findHeaderRow(rows) {
   // Manche Banken schreiben Kontoinfos ueber die Tabelle. Die Kopfzeile ist
@@ -272,6 +293,7 @@ export function readStatement(text, fileName = '') {
       currency: pick(row, 'currency'),
       status: pick(row, 'status'),
       category: pick(row, 'category'),
+      balance: col.balance >= 0 ? parseAmount(pick(row, 'balance')) : null,
     };
     if (!raw.date || raw.amount == null || raw.amount === 0) { skipped += 1; continue; }
     if (raw.currency && !/^(eur|€)?$/i.test(raw.currency)) { skipped += 1; continue; }
@@ -287,9 +309,10 @@ export function readStatement(text, fileName = '') {
       kind: raw.kind,
       source: bank.label,
       file: fileName,
+      ...(raw.balance != null ? { balance: raw.balance } : {}),
     });
   }
-  return { bank, transactions, skipped, error: null };
+  return { bank, transactions, skipped, error: null, preamble: balanceFromPreamble(rows.slice(0, headerIndex)) };
 }
 
 // Commerzbank hat keine eigene Empfaengerspalte - der Empfaenger steht am

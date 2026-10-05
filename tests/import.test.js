@@ -195,3 +195,38 @@ test('gewaehlte Zuordnung wird gelernt und beim naechsten Mal vorgeschlagen', ()
   const next = suggest(transactions, '2026-09', data.learned);
   assert.equal(next.find((g) => g.label.startsWith('REWE')).name, 'Wocheneinkauf');
 });
+
+// --- Startbetrag ----------------------------------------------------------------------
+
+import { openingBalance, openingFromToday } from '../src/import/balance.js';
+
+const fileOf = (text) => {
+  const r = readStatement(text);
+  return { account: r.bank.account === true, transactions: r.transactions, preamble: r.preamble };
+};
+
+test('Startbetrag aus dem Saldo je Zeile (Revolut)', () => {
+  // Erste September-Buchung: Top-Up +200 am 01.09., Saldo danach 272,20.
+  assert.deepEqual(openingBalance(fileOf(REVOLUT), '2026-09'), { value: 7220, how: 'column' });
+});
+
+test('Startbetrag aus dem Kontostand ueber der Tabelle', () => {
+  const csv = 'Kontostand vom 15.09.2026:;1.000,00 EUR\n\nBuchungstag;Empfänger;Betrag\n05.09.2026;REWE;-50,00\n10.09.2026;Gehalt;2.000,00\n20.09.2026;Miete;-700,00\n';
+  // 1.000 am 15.09. minus (−50 + 2.000) seit dem 1. = −950
+  assert.deepEqual(openingBalance(fileOf(csv), '2026-09'), { value: -95000, how: 'preamble' });
+  const later = 'Saldo;31.08.2026;500,00\n\nDatum;Name;Betrag\n01.09.2026;X;-10,00\n';
+  assert.equal(openingBalance(fileOf(later), '2026-09').value, 50000);
+});
+
+test('ohne Kontostand: fragen und aus dem heutigen Stand zurueckrechnen', () => {
+  const file = fileOf(SPARKASSE);
+  assert.equal(openingBalance(file, '2026-09').how, 'ask');
+  // Heute 1.500 €; seit 1.9. gebucht: +2.980 −750 −85 −45,12 −38,40 −13,99 −200 −61,30
+  const moves = 298000 - 75000 - 8500 - 4512 - 3840 - 1399 - 20000 - 6130;
+  assert.equal(openingFromToday(file, '2026-09', 150000), 150000 - moves);
+});
+
+test('PayPal und Stripe zaehlen nicht zum Startbetrag', () => {
+  assert.equal(openingBalance(fileOf(PAYPAL), '2026-09').how, 'none');
+  assert.equal(openingBalance(fileOf(STRIPE), '2026-09').how, 'none');
+});

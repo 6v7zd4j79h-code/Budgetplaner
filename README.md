@@ -18,6 +18,10 @@ und keinen Server, der Finanzdaten sieht. Gegen Datenverlust gibt es unter
 | **Ausgaben** | Einzelne Ausgaben buchen (Datum, Kategorie, Notiz, Betrag). Die Summen landen automatisch als Ist im Budget. „Noch übrig“ je Kategorie |
 | **Abos** | Abo-Tracker mit Kategorie und Abrechnung (monatlich, vierteljährlich, halbjährlich, jährlich), umgerechnet auf den Monat, Summe je Kategorie und im Jahr, Abos pausierbar |
 | **Sparziele** | Ziel, gespart, Fortschritt in Prozent, schnell einzahlen |
+| **Kontoauszug einlesen** | CSV von Sparkasse, Commerzbank, Revolut, PayPal, Stripe (und jede CSV mit Datum und Betrag). Die App sortiert vor, du prüfst. Zuordnungen werden gelernt, nichts wird doppelt gezählt. Startbetrag aus dem Saldo oder aus dem heutigen Kontostand. Alles nur im Browser. |
+| **Kassenbon scannen** | Foto → Texterkennung auf dem Gerät (Tesseract) → Artikel prüfen, unnötige markieren, an vorhandene Buchung anhängen |
+| **Unnötig** | Ganze Ausgaben oder einzelne Artikel als unnötig markieren; Überblick mit Summe, Anteil und größten Posten. Die App merkt sich Artikel. |
+| **Budgets** | Mehrere getrennte Budgets, z. B. privat und Gemeinschaftskonto |
 | **Sicherung** | Farbe wählen (Pflaume oder Blau), Sicherung als JSON-Datei speichern und wiederherstellen, Erinnerung nach 30 Tagen, alles löschen |
 
 Monatswechsel oben im Kopf. Ein neuer Monat übernimmt die Zeilen und Budgets
@@ -59,10 +63,16 @@ src/
   budget.js       die gesamte Rechenlogik, ohne Oberfläche
   store.js        Speicher (localStorage), Sicherung, Wiederherstellung
   palette.js      Farbschema Pflaume oder Blau, pro Gerät
+  waste.js        unnötige Ausgaben: Summen, Lernen je Artikel
+  receipt.js      Kassenbon-Text in Laden, Datum, Summe, Artikel zerlegen
+  ocr.js          Texterkennung (Tesseract, lädt aus /ocr)
+  import/         Kontoauszüge: CSV lesen, vorsortieren, übernehmen, Startbetrag
   main.js         Navigation, Monatswechsel, Ereignisse
   ui/             eine Datei pro Ansicht, dazu Diagramme (SVG) und Helfer
 tests/            node --test
 scripts/          Icons neu erzeugen (beide Farben)
 ```
 
-Keine Laufzeit-Abhängigkeiten. Die App ist rund 45 KB groß und funktioniert offline.
+Einzige Laufzeit-Abhängigkeit ist `tesseract.js` für den Bon-Scan. Programm und deutsches Sprachpaket
+kopiert `scripts/copy-ocr.mjs` vor jedem Build nach `public/ocr` (nicht im Repository) und die App lädt
+sie erst beim ersten Scan von der eigenen Adresse. Die App selbst ist rund 100 KB groß und läuft offline.
