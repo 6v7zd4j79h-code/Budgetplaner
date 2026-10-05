@@ -8,6 +8,7 @@ import * as log from './ui/log.js';
 import * as subs from './ui/subscriptions.js';
 import * as goals from './ui/goals.js';
 import * as settings from './ui/settings.js';
+import * as importer from './ui/importer.js';
 import { backupOverdue } from './ui/settings.js';
 import { applyPalette } from './palette.js';
 
@@ -18,6 +19,8 @@ const VIEWS = {
   subs: { module: subs, title: 'Abos', icon: '↻', monthly: false },
   goals: { module: goals, title: 'Sparziele', icon: '◎', monthly: false },
   settings: { module: settings, title: 'Sicherung', icon: '⚙', monthly: false },
+  // Nicht in der Navigation - erreichbar ueber Budget und Ausgaben.
+  import: { module: importer, title: 'Kontoauszug einlesen', icon: '⇩', monthly: false, hidden: true },
 };
 
 const ui = {
@@ -49,6 +52,7 @@ function context() {
     key: ui.key,
     summary: monthSummary(store.data, ui.key),
     focus(selector) { ui.pendingFocus = selector; scheduleRender(); },
+    show(view, key) { ui.view = view; if (key) ui.key = key; scheduleRender(); window.scrollTo({ top: 0 }); },
     rerender: scheduleRender,
   };
 }
@@ -114,7 +118,7 @@ function goto(view) {
 
 // --- Navigation ----------------------------------------------------------
 
-navEl.innerHTML = Object.entries(VIEWS).map(([id, v]) => `
+navEl.innerHTML = Object.entries(VIEWS).filter(([, v]) => !v.hidden).map(([id, v]) => `
   <button type="button" data-view="${id}"><span class="nav-icon" aria-hidden="true">${v.icon}</span><span>${v.title}</span></button>`).join('');
 navEl.addEventListener('click', (event) => {
   const btn = event.target.closest('[data-view]');

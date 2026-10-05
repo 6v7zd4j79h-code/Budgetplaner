@@ -62,6 +62,11 @@ export function render({ data, key, summary }) {
   }).join('');
 
   return `
+  <article class="card import-teaser">
+    <div><h2>Kontoauszug einlesen</h2>
+      <p class="hint">CSV aus dem Online-Banking wählen – die App füllt das Budget vor. Bleibt auf dem Gerät.</p></div>
+    <button type="button" class="btn primary" data-action="goto" data-view="import">Einlesen</button>
+  </article>
   <article class="card start-card">
     <label for="startInput"><h2>Startbetrag</h2></label>
     <p class="hint">${auto

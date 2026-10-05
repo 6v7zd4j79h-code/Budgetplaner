@@ -57,6 +57,7 @@ export function render({ data, key }) {
       <button type="submit" class="btn primary">Buchen</button>
       <p class="form-error" role="alert" hidden></p>
     </form>` : '<p class="empty">Lege zuerst im Budget unter „Ausgaben" eine Kategorie an.</p>'}
+    <p class="hint import-link">Viele Umsätze auf einmal? <button type="button" class="link-btn" data-action="goto" data-view="import">Kontoauszug einlesen</button></p>
   </article>
 
   ${lines.length ? `<article class="card">
