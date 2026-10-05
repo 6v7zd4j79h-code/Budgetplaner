@@ -4,7 +4,10 @@
 // der einzige Schutz gegen verlorene Daten - die Ansicht erinnert daran,
 // wenn die letzte Sicherung lange her ist.
 
-import { activeBudget, createBudget, deleteBudget, exportJson, importJson, lastBackupAt, renameBudget, resetAll, store } from '../store.js';
+import {
+  activeBudget, createBudget, deleteBudget, exportJson, importJson, isProtected, lastBackupAt, lock, removePassword,
+  renameBudget, resetAll, setPassword, store,
+} from '../store.js';
 import { todayISO, formatDay } from '../dates.js';
 import { esc } from './dom.js';
 import { PALETTES, currentPalette, setPalette } from '../palette.js';
@@ -12,6 +15,7 @@ import { PALETTES, currentPalette, setPalette } from '../palette.js';
 const REMIND_AFTER_DAYS = 30;
 
 export function backupOverdue() {
+  if (store.locked) return false;
   const { months, log, subscriptions, goals } = store.data;
   // Ein frisch angelegter Monat mit lauter Nullen zaehlt nicht als Daten.
   const hasData = log.length > 0 || subscriptions.length > 0 || goals.length > 0
@@ -26,7 +30,28 @@ export function render() {
   const last = lastBackupAt();
   const active = currentPalette();
   const current = activeBudget();
+  const guarded = isProtected();
   return `
+  <article class="card">
+    <h2>Passwort · ${esc(current.name)}</h2>
+    ${guarded
+    ? `<p>Dieses Budget ist mit einem Passwort geschützt und wird verschlüsselt gespeichert – auch die Sicherungsdatei.
+        Beim Wechsel zu einem anderen Budget und beim Neuladen wird es wieder gesperrt.</p>
+      <div class="btn-row">
+        <button type="button" class="btn" data-action="lock">Jetzt sperren</button>
+        <button type="button" class="btn" data-action="remove-password">Passwort entfernen</button>
+      </div>`
+    : '<p>Dieses Budget ist nicht geschützt. Wer die App auf diesem Gerät öffnet, kann es sehen.</p>'}
+    <form class="entry-form" data-action="set-password" autocomplete="off" style="margin-top:12px">
+      <label>${guarded ? 'Neues Passwort' : 'Passwort festlegen'}<input type="password" name="password" required minlength="4" autocomplete="new-password"></label>
+      <label>Passwort wiederholen<input type="password" name="repeat" required autocomplete="new-password"></label>
+      <button type="submit" class="btn primary">${guarded ? 'Passwort ändern' : 'Budget schützen'}</button>
+      <p class="form-error" id="passwordError" role="alert" hidden></p>
+    </form>
+    <p class="hint" style="margin:10px 0 0"><strong>Wichtig:</strong> Das Passwort kann niemand zurücksetzen – auch nicht über die
+      Sicherungsdatei. Wer es vergisst, kommt an die Daten dieses Budgets nicht mehr heran. Am besten im Passwort-Manager notieren.</p>
+  </article>
+
   <article class="card">
     <h2>Budgets</h2>
     <p class="hint">Getrennte Budgets, z. B. für dein Konto und das Gemeinschaftskonto. Jedes hat eigene Monate, Ausgaben, Abos und Sparziele. Umschalten oben im Kopf.</p>
@@ -102,8 +127,8 @@ export const actions = {
     setPalette(el.dataset.key);
     ctx.rerender();
   },
-  export(_el, _event, ctx) {
-    const blob = new Blob([exportJson()], { type: 'application/json' });
+  async export(_el, _event, ctx) {
+    const blob = new Blob([await exportJson()], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -130,6 +155,26 @@ export const actions = {
     } else {
       window.alert('Sicherung wiederhergestellt.');
     }
+  },
+  async 'set-password'(form, event) {
+    event.preventDefault();
+    const { password, repeat } = form.elements;
+    const error = document.getElementById('passwordError');
+    if (password.value !== repeat.value) {
+      error.textContent = 'Die beiden Passwörter sind nicht gleich.';
+      error.hidden = false;
+      return;
+    }
+    form.querySelector('button').disabled = true;
+    await setPassword(password.value);
+    window.alert('Passwort gespeichert. Das Budget ist jetzt geschützt.');
+  },
+  async 'remove-password'() {
+    if (!window.confirm('Passwortschutz entfernen? Die Daten werden dann unverschlüsselt gespeichert.')) return;
+    await removePassword();
+  },
+  lock() {
+    lock();
   },
   reset() {
     if (!window.confirm('Wirklich alle Daten auf diesem Gerät löschen?')) return;

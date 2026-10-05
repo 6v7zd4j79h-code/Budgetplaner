@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-03 / 05 (05.10.: Mac-Arbeitskopie und interne Sicherung eingerichtet)
+**Letzte Sitzung:** 2026-10-05 (Mac: Passwortschutz; PC: CSV-Import, Kassenbon, mehrere Budgets)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -31,6 +31,16 @@ Farben: zuerst Blau, dann auf Wunsch **Pflaume/Rosé** als Standard, dazu eine
 **blaue Variante** („Männer-Version“) und eine **graue im Büro-Stil** (eckiger, ohne Schatten). Umschaltbar in der App unter „Sicherung“
 (gilt pro Gerät). Mit `VITE_FARBE=blau` beim Build startet die App blau,
 inklusive blauem Icon und blauer Statusleiste.
+
+Am 05.10. am Mac ergänzt (parallel zur PC-Sitzung, auf deren Stand aufgebaut):
+- **Passwortschutz pro Budget.** Geschützte Budgets liegen nur verschlüsselt
+  im Speicher (AES-GCM, Schlüssel per PBKDF2 aus dem Passwort), auch die
+  Sicherungsdatei ist dann verschlüsselt. Sperrt beim Budgetwechsel und beim
+  Neuladen, Schloss-Knopf im Kopf. Vergessenes Passwort = Daten weg.
+- Standard-Budgets für neue Geräte: „Mareike“ und „Gemeinschaftskonto“.
+- Kein Formular schickt mehr an eine Adresse (Passwort nie in der URL).
+- Septemberdaten (beide Budgets) als Importdateien erzeugt – liegen bewusst
+  NICHT im Repo, sondern unter `~/Budgetplan-Sicherungen` auf dem Mac.
 
 Am 05.10. ergänzt (Wunsch: sehen, wo Geld für Unnötiges hingeht):
 - **Kontoauszug einlesen** (CSV, nur im Browser): Sparkasse, Commerzbank,
@@ -80,3 +90,7 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 - Vor dem Committen `npm test` laufen lassen
 - Jede Sitzung beginnt mit `/start`
 - Jede Sitzung endet mit `/shutdown`
+- **Deploy nur auf ausdrückliche Anweisung.** Push auf `main` = Netlify-Deploy.
+- **Keine echten Kontodaten ins Repo** – das GitHub-Repo ist öffentlich.
+- Am Mac und am PC wird parallel gearbeitet: vor dem Arbeiten immer `/start`
+  (holt den Stand von GitHub), sonst entstehen doppelte Umsetzungen.

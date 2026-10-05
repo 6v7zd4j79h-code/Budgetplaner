@@ -1,7 +1,8 @@
 import './styles.css';
 import { ensureMonth, monthSummary } from './budget.js';
 import { addMonths, monthKey, monthLabel } from './dates.js';
-import { activeBudget, load, store, subscribe, switchBudget, update } from './store.js';
+import { activeBudget, isProtected, load, lock, store, subscribe, switchBudget, update } from './store.js';
+import * as lockView from './ui/lock.js';
 import * as overview from './ui/overview.js';
 import * as plan from './ui/plan.js';
 import * as log from './ui/log.js';
@@ -38,6 +39,7 @@ const monthBar = document.getElementById('monthBar');
 const bannerEl = document.getElementById('banner');
 const brandName = document.getElementById('brandName');
 const budgetSelect = document.getElementById('budgetSelect');
+const lockBtn = document.getElementById('lockBtn');
 
 // Mehrere Budgets: Auswahl im Kopf statt des App-Namens.
 function renderBudgetSwitch() {
@@ -45,9 +47,11 @@ function renderBudgetSwitch() {
   brandName.hidden = several;
   budgetSelect.hidden = !several;
   if (several) {
-    budgetSelect.innerHTML = store.budgets.map((b) => `<option value="${b.id}" ${b.id === store.active ? 'selected' : ''}>${b.name.replace(/</g, '&lt;')}</option>`).join('');
+    budgetSelect.innerHTML = store.budgets.map((b) => `<option value="${b.id}" ${b.id === store.active ? 'selected' : ''}>${b.protected ? '🔒 ' : ''}${b.name.replace(/</g, '&lt;')}</option>`).join('');
   }
+  lockBtn.hidden = !isProtected() || store.locked;
 }
+lockBtn.addEventListener('click', () => lock());
 budgetSelect.addEventListener('change', () => switchBudget(budgetSelect.value));
 
 function readHash() {
@@ -96,6 +100,15 @@ function activeSelector() {
 }
 
 function render() {
+  if (store.locked) {
+    renderBudgetSwitch();
+    monthBar.hidden = true;
+    bannerEl.hidden = true;
+    document.title = `Gesperrt · ${activeBudget().name}`;
+    viewEl.innerHTML = lockView.render();
+    viewEl.querySelector('input[type=password]')?.focus();
+    return;
+  }
   if (!store.data.months[ui.key]) {
     // Fehlender Monat wird angelegt; update() ruft render() erneut auf.
     update((data) => ensureMonth(data, ui.key));
@@ -149,6 +162,11 @@ document.getElementById('bannerBtn').addEventListener('click', () => goto('setti
 // --- Aktionen der Ansichten ------------------------------------------------
 
 function dispatch(el, event) {
+  if (store.locked) {
+    // Gesperrt gibt es keine Daten, also auch keinen Monat zum Berechnen.
+    lockView.actions[el.dataset.action]?.(el, event);
+    return;
+  }
   const handler = VIEWS[ui.view].module.actions[el.dataset.action];
   if (handler) handler(el, event, context());
 }
@@ -166,6 +184,9 @@ viewEl.addEventListener('change', (event) => {
 });
 
 viewEl.addEventListener('submit', (event) => {
+  // Kein Formular der App wird je an eine Adresse geschickt - sonst landen
+  // Eingaben (etwa ein Passwort) in der Adresszeile.
+  event.preventDefault();
   const form = event.target.closest('form[data-action]');
   if (form) dispatch(form, event);
 });

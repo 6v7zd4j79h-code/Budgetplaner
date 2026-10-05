@@ -475,7 +475,7 @@ h2 {
 :focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 
 /* Eingabefelder */
-input[type=text], input[type=date], select {
+input[type=text], input[type=password], input[type=date], select {
   min-height: 44px; padding: 0 10px; width: 100%; min-width: 0;
   border: 1px solid var(--border); border-radius: 9px;
   background: var(--surface-2);
@@ -789,3 +789,11 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 .start-take { margin-bottom: 12px; font-size: 0.95rem; }
 .start-take input { accent-color: var(--primary); }
 .start-take input:checked + span { color: var(--primary-strong); }
+
+/* --- Passwortschutz -------------------------------------------------------------- */
+
+.lock-btn { font-size: 1.05rem; }
+.lock-btn[hidden] { display: none; }
+.lock-card { max-width: 420px; width: 100%; margin: 24px auto; text-align: center; }
+.lock-card form { text-align: left; }
+.lock-icon { font-size: 2.2rem; }
