@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-03 / 05
+**Letzte Sitzung:** 2026-10-03 / 05 (05.10.: Mac-Arbeitskopie und interne Sicherung eingerichtet)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -49,6 +49,11 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 - **Kopie auf dem PC** unter `Downloads/Projekte/Budgetplaner` (entpackte ZIP).
   Nur Sicherung – maßgeblich ist GitHub. Am PC weiterarbeiten:
   `git clone https://github.com/6v7zd4j79h-code/Budgetplaner`
+- **Arbeitskopie auf dem Mac** unter `~/Budgetplan` (seit 05.10., mit GitHub
+  verbunden). `/start` holt dort den neuesten Stand von GitHub,
+  `/shutdown` pusht nach GitHub (externe Sicherung) und legt zusätzlich ein
+  ZIP in `~/Budgetplan-Sicherungen` ab (interne Sicherung, die 20 neuesten
+  bleiben).
 
 - **Daten hängen an Gerät und Adresse.** Browserdaten löschen = Daten weg,
   wenn keine Sicherung existiert. Die App erinnert nach 30 Tagen.
