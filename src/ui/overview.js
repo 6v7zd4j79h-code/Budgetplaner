@@ -6,8 +6,36 @@ import { monthName } from '../dates.js';
 import { donut, legend, meter } from './charts.js';
 import { esc, eur, signClass } from './dom.js';
 import { monthWaste } from '../waste.js';
+import { activeAccounts, balancesSummary, overdraftRoom } from '../accounts.js';
+import { formatDay } from '../dates.js';
 
-export function render({ data, key, summary }) {
+function accountsCard(data, account) {
+  const all = activeAccounts(data);
+  if (!all.length) {
+    return `<article class="card accounts-card">
+      <h2>Konten</h2>
+      <p class="muted">Leg deine Konten an (Sparkasse, PayPal, Klarna …) und trag die Kontostände ein – dann rechnet die App mit echtem Geld statt mit Schätzungen.</p>
+      <button type="button" class="btn ghost" data-action="goto" data-view="accounts">Konten anlegen</button>
+    </article>`;
+  }
+  const shown = account && account !== 'alle' ? all.filter((a) => a.id === account) : all;
+  const sum = balancesSummary(shown);
+  const rows = shown.map((a) => {
+    const room = overdraftRoom(a);
+    return `<li><span>${esc(a.name)}${a.business ? ' <span class="pill small">geschäftlich</span>' : ''}
+        <span class="muted small">${a.balanceDate ? esc(formatDay(a.balanceDate)) : 'kein Stand'}</span></span>
+      <span class="${signClass(a.balance ?? 0)}">${a.balance == null ? '–' : eur(a.balance)}${
+        a.overdraft && room != null ? `<span class="muted small"> · Dispo-Rest ${eur(room)}</span>` : ''}</span></li>`;
+  }).join('');
+  return `<article class="card accounts-card">
+    <header class="section-head"><h2>Kontostände</h2><span class="section-sum ${signClass(sum.total)}">${eur(sum.total)}</span></header>
+    <ul class="mini account-list">${rows}</ul>
+    ${sum.overdraftUsed ? `<p class="warn">${eur(sum.overdraftUsed)} im Dispo. Der Dispo-Rahmen ist kein verfügbares Geld.</p>` : ''}
+    <button type="button" class="btn ghost" data-action="goto" data-view="accounts">Kontostände aktualisieren</button>
+  </article>`;
+}
+
+export function render({ data, key, summary, account }) {
   const { totals, start, availableActual, availableBudget } = summary;
   const month = data.months[key];
   const inflow = start + totals.income.actual;
@@ -54,6 +82,7 @@ export function render({ data, key, summary }) {
   const waste = monthWaste(data.log, key, names);
 
   return `
+  ${accountsCard(data, account)}
   <section class="grid grid-hero">
     <article class="card hero">
       <h2>Verfügbarer Betrag</h2>

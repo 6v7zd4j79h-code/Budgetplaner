@@ -70,13 +70,13 @@ export function templateMonth() {
 export function monthFromPrevious(previous) {
   const lines = {};
   for (const { id } of SECTIONS) {
-    lines[id] = (previous.lines[id] || []).map((l) => ({
-      id: l.id,
-      name: l.name,
-      budget: l.budget,
-      actual: null,
-      done: false,
-    }));
+    lines[id] = (previous.lines[id] || []).map((l) => {
+      const next = { id: l.id, name: l.name, budget: l.budget, actual: null, done: false };
+      // Konto und "geschaeftlich" bleiben der Zeile treu.
+      if (l.accountId) next.accountId = l.accountId;
+      if (l.business) next.business = true;
+      return next;
+    });
   }
   return { startBalance: null, lines };
 }
@@ -224,6 +224,7 @@ export function validateData(candidate) {
   if (!candidate || typeof candidate !== 'object') return 'Die Datei enthält keine Budgetdaten.';
   if (candidate.version !== 1) return 'Diese Sicherung stammt aus einer unbekannten Version.';
   if (!candidate.months || typeof candidate.months !== 'object') return 'Die Monatsdaten fehlen.';
+  if (candidate.accounts !== undefined && !Array.isArray(candidate.accounts)) return 'Die Konten sind beschädigt.';
   for (const field of ['log', 'subscriptions', 'goals']) {
     if (!Array.isArray(candidate[field])) return `Der Teil „${field}" fehlt oder ist beschädigt.`;
   }

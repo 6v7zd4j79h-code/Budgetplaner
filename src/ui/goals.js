@@ -20,12 +20,14 @@ export function render({ data }) {
       <p class="muted">${eur(g.saved)} von ${eur(g.target)} · ${reached ? 'Ziel erreicht' : `noch ${eur(goalRemaining(g))}`}</p>
       <div class="goal-fields">
         <label>Ziel ${moneyInput({ action: 'goal-target', key: g.id, value: g.target, label: 'Zielbetrag' })}</label>
-        <label>Gespart ${moneyInput({ action: 'goal-saved', key: g.id, value: g.saved, label: 'Bisher gespart' })}</label>
+        ${g.accountId ? '' : `<label>Gespart ${moneyInput({ action: 'goal-saved', key: g.id, value: g.saved, label: 'Bisher gespart' })}</label>`}
       </div>
-      <form class="deposit" data-action="goal-deposit" data-key="${esc(g.id)}">
+      ${g.accountId
+    ? `<p class="hint goal-linked">Läuft automatisch mit dem Kontostand${g.linked ? ` von „${esc(g.linked)}“` : ''} – aktualisiere ihn unter <button type="button" class="link-btn" data-action="goto" data-view="accounts">Kontostände</button>.</p>`
+    : `<form class="deposit" data-action="goal-deposit" data-key="${esc(g.id)}">
         <input class="money" type="text" name="amount" inputmode="decimal" placeholder="Betrag" aria-label="Einzahlung für ${esc(g.name)}" autocomplete="off">
         <button type="submit" class="btn">+ Einzahlen</button>
-      </form>
+      </form>`}
     </article>`;
   }).join('');
 

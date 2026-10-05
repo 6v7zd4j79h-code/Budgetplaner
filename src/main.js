@@ -3,6 +3,8 @@ import { ensureMonth, monthSummary } from './budget.js';
 import { addMonths, monthKey, monthLabel } from './dates.js';
 import { activeBudget, isProtected, load, lock, store, subscribe, switchBudget, update } from './store.js';
 import * as lockView from './ui/lock.js';
+import * as accountsView from './ui/accounts.js';
+import { ALL, activeAccounts, viewFor } from './accounts.js';
 import * as overview from './ui/overview.js';
 import * as plan from './ui/plan.js';
 import * as log from './ui/log.js';
@@ -24,13 +26,18 @@ const VIEWS = {
   // Nicht in der Navigation - erreichbar ueber Budget und Ausgaben.
   import: { module: importer, title: 'Kontoauszug einlesen', icon: '⇩', monthly: false, hidden: true },
   receipt: { module: receipt, title: 'Kassenbon scannen', icon: '📷', monthly: false, hidden: true },
+  accounts: { module: accountsView, title: 'Konten', icon: '🏦', monthly: true, hidden: true },
 };
 
 const ui = {
   view: 'overview',
   key: monthKey(),
   pendingFocus: null,
+  // Kontofilter: "alle" oder eine Konto-ID. Gilt fuer Uebersicht, Budget und Ausgaben.
+  account: ALL,
 };
+
+const FILTERED_VIEWS = new Set(['overview', 'plan', 'log']);
 
 const viewEl = document.getElementById('view');
 const navEl = document.getElementById('nav');
@@ -52,7 +59,7 @@ function renderBudgetSwitch() {
   lockBtn.hidden = !isProtected() || store.locked;
 }
 lockBtn.addEventListener('click', () => lock());
-budgetSelect.addEventListener('change', () => switchBudget(budgetSelect.value));
+budgetSelect.addEventListener('change', () => { ui.account = ALL; switchBudget(budgetSelect.value); });
 
 function readHash() {
   const [view, key] = location.hash.replace(/^#\/?/, '').split('/');
@@ -65,11 +72,20 @@ function writeHash() {
   if (location.hash !== next) history.replaceState(null, '', next);
 }
 
+function currentAccount() {
+  if (ui.account !== ALL && !activeAccounts(store.data).some((a) => a.id === ui.account)) ui.account = ALL;
+  return FILTERED_VIEWS.has(ui.view) ? ui.account : ALL;
+}
+
 function context() {
+  const account = currentAccount();
+  const data = viewFor(store.data, account);
   return {
-    data: store.data,
+    data,
+    raw: store.data,
+    account,
     key: ui.key,
-    summary: monthSummary(store.data, ui.key),
+    summary: monthSummary(data, ui.key),
     focus(selector) { ui.pendingFocus = selector; scheduleRender(); },
     show(view, key) { ui.view = view; if (key) ui.key = key; scheduleRender(); window.scrollTo({ top: 0 }); },
     rerender: scheduleRender,
@@ -127,7 +143,7 @@ function render() {
   });
   bannerEl.hidden = !backupOverdue() || ui.view === 'settings';
 
-  viewEl.innerHTML = view.module.render(context());
+  viewEl.innerHTML = accountFilter() + view.module.render(context());
   writeHash();
 
   if (selector) {
@@ -137,6 +153,18 @@ function render() {
       if (target.select && target.type === 'text') target.select();
     }
   }
+}
+
+// Kontofilter ueber den Monatsansichten, sobald es Konten gibt.
+function accountFilter() {
+  const accounts = activeAccounts(store.data);
+  if (!accounts.length || !FILTERED_VIEWS.has(ui.view)) return '';
+  const current = currentAccount();
+  const option = (id, name) => `<option value="${id}" ${id === current ? 'selected' : ''}>${name.replace(/</g, '&lt;')}</option>`;
+  return `<div class="account-filter">
+    <label>Konto <select data-action="account-filter" aria-label="Konto auswählen">${option(ALL, 'Alle Konten')}${accounts.map((a) => option(a.id, a.name)).join('')}</select></label>
+    <button type="button" class="btn ghost" data-action="goto" data-view="accounts">Kontostände</button>
+  </div>`;
 }
 
 function goto(view) {
@@ -165,6 +193,11 @@ function dispatch(el, event) {
   if (store.locked) {
     // Gesperrt gibt es keine Daten, also auch keinen Monat zum Berechnen.
     lockView.actions[el.dataset.action]?.(el, event);
+    return;
+  }
+  if (el.dataset.action === 'account-filter') {
+    ui.account = el.value;
+    render();
     return;
   }
   const handler = VIEWS[ui.view].module.actions[el.dataset.action];

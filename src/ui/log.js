@@ -8,8 +8,10 @@ import { update } from '../store.js';
 import { esc, eur } from './dom.js';
 import { entryRest, entryWaste, itemKey, monthWaste, rememberedWaste } from '../waste.js';
 import { startFor } from './receipt.js';
+import { ALL, activeAccounts, accountsOf } from '../accounts.js';
 
 let lastLineId = null;
+let lastAccountId = null;
 // Welche Buchung gerade aufgeklappt ist (Artikel bearbeiten).
 let openId = null;
 
@@ -55,7 +57,7 @@ function wasteCard(w) {
   </article>`;
 }
 
-export function render({ data, key }) {
+export function render({ data, key, account }) {
   const month = data.months[key];
   const lines = month.lines.expenses;
   const names = Object.fromEntries(lines.map((l) => [l.id, l.name]));
@@ -64,6 +66,9 @@ export function render({ data, key }) {
     .sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
   const actuals = expenseActuals(month, data.log, key);
   const selected = lines.some((l) => l.id === lastLineId) ? lastLineId : lines[0]?.id;
+  const accounts = activeAccounts(data);
+  const accountNames = Object.fromEntries(accountsOf(data).map((a) => [a.id, a.name]));
+  const preset = account && account !== ALL ? account : lastAccountId;
 
   const chips = lines.map((l) => {
     const rest = l.budget - (actuals.byLine[l.id] || 0);
@@ -86,7 +91,7 @@ export function render({ data, key }) {
         return `
         <li class="entry${e.waste ? ' is-waste' : ''}">
           <span class="entry-cat">${esc(names[e.lineId] || 'Ohne Kategorie')}</span>
-          <span class="entry-note">${esc(e.note)}</span>
+          <span class="entry-note">${esc(e.note)}${e.accountId && accountNames[e.accountId] ? ` <span class="muted small">· ${esc(accountNames[e.accountId])}</span>` : ''}</span>
           <span class="entry-amount">${eur(e.amount)}</span>
           <div class="entry-actions">
             <button type="button" class="tag${e.waste ? ' on' : ''}" data-action="entry-waste" data-key="${esc(e.id)}" aria-pressed="${!!e.waste}">${e.waste ? 'unnötig' : 'unnötig?'}</button>
@@ -115,6 +120,7 @@ export function render({ data, key }) {
     <form class="entry-form" data-action="entry-add">
       <label>Datum<input type="date" name="date" value="${clampToMonth(todayISO(), key)}" required></label>
       <label>Kategorie<select name="lineId" required>${lines.map((l) => `<option value="${esc(l.id)}" ${l.id === selected ? 'selected' : ''}>${esc(l.name || 'ohne Namen')}</option>`).join('')}</select></label>
+      ${accounts.length ? `<label>Konto<select name="accountId"><option value="">ohne Konto</option>${accounts.map((a) => `<option value="${esc(a.id)}" ${a.id === preset ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>` : ''}
       <label>Notiz<input type="text" name="note" placeholder="z. B. Wocheneinkauf" autocomplete="off"></label>
       <label>Betrag<input class="money" type="text" name="amount" inputmode="decimal" placeholder="0,00" autocomplete="off" required></label>
       <label class="waste-toggle form-waste"><input type="checkbox" name="waste"><span>unnötig / nur ausprobiert</span></label>
@@ -154,6 +160,8 @@ export const actions = {
     update((data) => {
       const entry = { id: newId(), date, lineId: lastLineId, note: String(fields.get('note')).trim(), amount };
       if (fields.get('waste')) entry.waste = true;
+      lastAccountId = String(fields.get('accountId') || '') || null;
+      if (lastAccountId) entry.accountId = lastAccountId;
       data.log.push(entry);
     });
     ctx.focus('.entry-form input[name="amount"]');

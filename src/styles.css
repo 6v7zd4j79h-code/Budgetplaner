@@ -333,6 +333,13 @@ h2 {
   .brand-name { display: none; }
   .app-header { padding-left: 12px; padding-right: 8px; }
 }
+/* Mit Budget-Auswahl: Name und Monat in zwei Zeilen, damit nichts abgeschnitten wird. */
+@media (max-width: 520px) {
+  .app-header:has(.budget-select:not([hidden])) { flex-wrap: wrap; row-gap: 6px; }
+  .app-header:has(.budget-select:not([hidden])) .brand { flex: 1 1 100%; }
+  .app-header .budget-select { flex: 1; max-width: none; }
+  .app-header:has(.budget-select:not([hidden])) .month-bar { flex: 1 1 100%; justify-content: space-between; }
+}
 .icon-btn:hover, .month-label:hover { background: rgba(255, 255, 255, 0.15); }
 
 /* --- Navigation: unten auf dem Handy, oben ab Tablet ------------------------ */
@@ -797,3 +804,24 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 .lock-card { max-width: 420px; width: 100%; margin: 24px auto; text-align: center; }
 .lock-card form { text-align: left; }
 .lock-icon { font-size: 2.2rem; }
+
+/* --- Konten ------------------------------------------------------------------------ */
+
+.account-filter {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+}
+.account-filter label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.account-filter select { min-width: 12em; }
+.line-meta { grid-column: 2 / -2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 0.85rem; }
+.line-meta select { width: auto; max-width: 60%; min-height: 32px; padding: 2px 8px; font-size: 0.85rem; }
+.line-meta .waste-toggle { font-size: 0.82rem; }
+.account-balance { font-size: 1.8rem; font-weight: 300; margin: 4px 0; }
+.account-fields { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(9em, 1fr)); margin: 10px 0; }
+.account-fields label { display: grid; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+.account-flags { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px; }
+.account.closed { opacity: 0.6; }
+.account-list li { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.account-list li > span:first-child { display: flex; flex-direction: column; }
+.small { font-size: 0.78rem; }
+.pill.small { padding: 1px 8px; font-size: 0.7rem; }
+.goal-linked { font-size: 0.85rem; }
