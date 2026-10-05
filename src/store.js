@@ -1,14 +1,21 @@
-// Speicher: alles liegt im localStorage dieses Geraets, nichts verlaesst es.
-// Damit die Daten einen Gerätewechsel oder geloeschte Browserdaten
-// ueberleben, gibt es in den Einstellungen Sicherung und Wiederherstellung.
+// Speicher. Zwei Betriebsarten:
+//
+// - "local": alles liegt im localStorage dieses Geraets (wie bisher). Fuer
+//   Gerätewechsel gibt es die Sicherungsdatei.
+// - "vault": Abgleich zwischen Geraeten ueber Supabase (siehe cloud.js).
+//   Alle Budgets liegen zusammen in einem verschluesselten Tresor - auf dem
+//   Geraet und auf dem Server. Entschluesselt existieren sie nur im
+//   Arbeitsspeicher.
+//
+// Solange bei eingerichtetem Abgleich niemand angemeldet ist, steht die App
+// auf "signedout" und zeigt die Anmeldung.
 
 import { emptyData, validateData } from './budget.js';
 import { deriveKey, newSalt, seal, unseal } from './crypto.js';
+import * as cloud from './cloud.js';
 
-// Passwortschutz: Ein geschuetztes Budget (protected: true) liegt im Speicher
-// nur verschluesselt als { sealed: { salt, iv, data } }. Nach dem Entsperren
-// stehen Daten und Schluessel nur im Arbeitsspeicher. Wechsel zu einem
-// anderen Budget und Neuladen sperren wieder.
+// Passwortschutz im lokalen Modus: Ein geschuetztes Budget (protected: true)
+// liegt im Speicher nur verschluesselt als { sealed: { salt, iv, data } }.
 const keys = new Map(); // Budget-ID -> { key, salt }
 
 function isSealed(parsed) {
@@ -16,25 +23,323 @@ function isSealed(parsed) {
   return Boolean(s && [s.salt, s.iv, s.data].every((v) => typeof v === 'string' && v));
 }
 
-// Mehrere getrennte Budgets (z. B. privat und Gemeinschaftskonto). Das
-// erste heisst intern "privat" und nutzt die urspruenglichen Schluessel,
-// damit vorhandene Daten ohne Umzug erhalten bleiben.
+// Mehrere getrennte Budgets. Das erste heisst intern "privat" und nutzt die
+// urspruenglichen Schluessel, damit vorhandene Daten ohne Umzug erhalten bleiben.
 const MAIN_ID = 'privat';
 const STORAGE_BUDGETS = 'budgetplaner.budgets';
+const STORAGE_VAULT = 'budgetplaner.vault';
+const STORAGE_LOCAL_ONLY = 'budgetplaner.localOnly';
 const dataKey = (id) => (id === MAIN_ID ? 'budgetplaner.data' : `budgetplaner.data.${id}`);
 const backupKey = (id) => (id === MAIN_ID ? 'budgetplaner.lastBackup' : `budgetplaner.lastBackup.${id}`);
 
 const listeners = new Set();
 
+// Neutrale Vorgabe: Die Seite ist oeffentlich, Namen legt jede Person selbst fest.
+const defaultBudgets = () => [{ id: MAIN_ID, name: 'Mein Budget' }];
+
 export const store = {
   data: emptyData(),
   saveFailed: false,
   locked: false,
-  budgets: [{ id: MAIN_ID, name: 'Mareike' }, { id: 'gemeinsam', name: 'Gemeinschaftskonto' }],
+  mode: 'local',
+  budgets: defaultBudgets(),
   active: MAIN_ID,
+  // Zustand des Abgleichs fuer die Anzeige.
+  cloud: { email: null, lastSync: null, pending: false, error: null, notice: null, busy: false },
 };
 
+// --- Tresor (Betriebsart "vault") ----------------------------------------------
+
+let vault = null;     // { budgets, active, books: { id: data } }
+let vaultKey = null;  // { key, salt }
+let vaultRev = 0;     // Stand auf dem Server, auf dem der Tresor beruht
+
+function readCache() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_VAULT) || 'null');
+    return raw && raw.salt && raw.iv && raw.data ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function useVault(content) {
+  vault = {
+    budgets: Array.isArray(content.budgets) && content.budgets.length ? content.budgets : defaultBudgets(),
+    active: content.active,
+    books: content.books || {},
+  };
+  store.mode = 'vault';
+  store.budgets = vault.budgets;
+  store.active = vault.budgets.some((b) => b.id === vault.active) ? vault.active : vault.budgets[0].id;
+  store.locked = false;
+  store.data = vault.books[store.active] || emptyData();
+  vault.books[store.active] = store.data;
+}
+
+function vaultContent() {
+  vault.budgets = store.budgets;
+  vault.active = store.active;
+  return vault;
+}
+
+// Verschluesselt auf dem Geraet ablegen, dann (verzoegert) hochladen.
+async function persistVault() {
+  if (!vault || !vaultKey) return;
+  try {
+    const sealed = await seal(vaultKey.key, vaultKey.salt, vaultContent());
+    localStorage.setItem(STORAGE_VAULT, JSON.stringify({ ...sealed, rev: vaultRev, email: store.cloud.email }));
+    store.saveFailed = false;
+  } catch {
+    store.saveFailed = true;
+  }
+  store.cloud.pending = true;
+  schedulePush();
+}
+
+let pushTimer = null;
+function schedulePush(delay = 1200) {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(push, delay);
+}
+
+let pushing = null;
+async function push() {
+  if (!vault || !vaultKey || !cloud.cloudConfigured) return;
+  if (pushing) { schedulePush(); return; }
+  pushing = (async () => {
+    try {
+      const result = await cloud.storeVault(vaultKey, vaultContent(), vaultRev);
+      if (result.conflict) {
+        await pull({ force: true });
+        store.cloud.notice = 'Auf einem anderen Gerät wurde inzwischen etwas geändert. Der neueste Stand ist geladen – bitte deine letzte Änderung prüfen.';
+      } else {
+        vaultRev = result.rev;
+        store.cloud.pending = false;
+        store.cloud.lastSync = new Date().toISOString();
+        store.cloud.error = null;
+        await persistCacheOnly();
+      }
+    } catch (error) {
+      store.cloud.error = error.message;
+    } finally {
+      pushing = null;
+      emit();
+    }
+  })();
+  return pushing;
+}
+
+async function persistCacheOnly() {
+  try {
+    const sealed = await seal(vaultKey.key, vaultKey.salt, vaultContent());
+    localStorage.setItem(STORAGE_VAULT, JSON.stringify({ ...sealed, rev: vaultRev, email: store.cloud.email }));
+  } catch {
+    store.saveFailed = true;
+  }
+}
+
+// Neueren Stand vom Server holen. Ungespeicherte Aenderungen auf diesem
+// Geraet werden zuerst hochgeladen - ausser force (nach einem Konflikt).
+export async function pull({ force = false } = {}) {
+  if (store.mode !== 'vault' || !vaultKey || !cloud.cloudConfigured) return;
+  if (store.cloud.pending && !force) { await push(); return; }
+  try {
+    const row = await cloud.fetchVault();
+    if (row && row.rev > vaultRev) {
+      const content = await unseal(vaultKey.key, row);
+      vaultRev = row.rev;
+      const active = store.active;
+      useVault({ ...content, active });
+      store.cloud.pending = false;
+      await persistCacheOnly();
+    }
+    store.cloud.lastSync = new Date().toISOString();
+    store.cloud.error = null;
+  } catch (error) {
+    store.cloud.error = error.message;
+  }
+  emit();
+}
+
+// Lokale Budgets beim ersten Anmelden in den Tresor uebernehmen.
+// Geschuetzte Budgets lassen sich ohne ihr Passwort nicht lesen - sie
+// bleiben auf dem Geraet und werden gemeldet.
+function localContent() {
+  readBudgets();
+  const books = {};
+  const skipped = [];
+  for (const b of store.budgets) {
+    if (b.protected) { skipped.push(b.name); continue; }
+    books[b.id] = readData(b.id);
+  }
+  const budgets = store.budgets.filter((b) => !b.protected).map(({ id, name }) => ({ id, name }));
+  return { content: { budgets: budgets.length ? budgets : defaultBudgets(), active: store.active, books }, skipped };
+}
+
+function clearLocalPlain(ids) {
+  for (const id of ids) {
+    try { localStorage.removeItem(dataKey(id)); } catch { /* egal */ }
+  }
+  try { localStorage.removeItem(STORAGE_BUDGETS); } catch { /* egal */ }
+}
+
+export function cloudAvailable() {
+  return cloud.cloudConfigured;
+}
+
+export function cachedEmail() {
+  return readCache()?.email || null;
+}
+
+export async function cloudSignUp(email, password) {
+  return cloud.signUp(email, password);
+}
+
+// Anmelden: Server-Login, Tresor holen (oder beim ersten Mal anlegen).
+export async function cloudSignIn(email, password, remember) {
+  const login = await cloud.signIn(email, password);
+  if (login.error) return login;
+  store.cloud.email = email.trim();
+  try {
+    const row = await cloud.fetchVault();
+    if (row) {
+      vaultKey = { key: await deriveKey(password, row.salt), salt: row.salt };
+      let content;
+      try {
+        content = await unseal(vaultKey.key, row);
+      } catch {
+        return { error: 'Die Daten lassen sich mit diesem Passwort nicht öffnen.' };
+      }
+      vaultRev = row.rev;
+      useVault(content);
+      await persistCacheOnly();
+    } else {
+      const salt = newSalt();
+      vaultKey = { key: await deriveKey(password, salt), salt };
+      const { content, skipped } = localContent();
+      const migrated = content.budgets.map((b) => b.id);
+      vaultRev = 0;
+      useVault(content);
+      const result = await cloud.storeVault(vaultKey, vaultContent(), 0);
+      if (result.conflict) return { error: 'Auf einem anderen Gerät wurde gerade ein Tresor angelegt. Bitte nochmal anmelden.' };
+      vaultRev = result.rev;
+      await persistCacheOnly();
+      clearLocalPlain(migrated);
+      if (skipped.length) store.cloud.notice = `Nicht übernommen (eigenes Passwort): ${skipped.join(', ')}. Dort Passwort entfernen und erneut anmelden.`;
+    }
+  } catch (error) {
+    return { error: error.message };
+  }
+  if (remember) await cloud.rememberKey({ ...vaultKey, email: store.cloud.email });
+  store.cloud.lastSync = new Date().toISOString();
+  emit();
+  return {};
+}
+
+// Entsperren ohne Server (z. B. offline) mit dem Tresor auf dem Geraet.
+export async function cloudUnlock(password, remember) {
+  const cache = readCache();
+  if (!cache) return { error: 'Auf diesem Gerät liegt noch nichts – bitte anmelden.' };
+  try {
+    const key = await deriveKey(password, cache.salt);
+    const content = await unseal(key, cache);
+    vaultKey = { key, salt: cache.salt };
+    vaultRev = cache.rev || 0;
+    store.cloud.email = cache.email || null;
+    useVault(content);
+  } catch {
+    return { error: 'Das Passwort stimmt nicht.' };
+  }
+  if (remember) await cloud.rememberKey({ ...vaultKey, email: store.cloud.email });
+  emit();
+  pull();
+  return {};
+}
+
+// Sperren: Schluessel und Daten aus dem Arbeitsspeicher werfen.
+export async function cloudLock() {
+  if (store.cloud.pending) await push();
+  await cloud.forgetKey();
+  vault = null;
+  vaultKey = null;
+  store.mode = 'signedout';
+  store.locked = true;
+  store.data = emptyData();
+  emit();
+}
+
+// Abmelden: zusaetzlich die Kopie auf diesem Geraet loeschen.
+export async function cloudSignOut() {
+  if (store.cloud.pending) await push();
+  await cloud.signOut();
+  try { localStorage.removeItem(STORAGE_VAULT); } catch { /* egal */ }
+  vault = null;
+  vaultKey = null;
+  vaultRev = 0;
+  store.cloud = { email: null, lastSync: null, pending: false, error: null, notice: null, busy: false };
+  store.budgets = defaultBudgets();
+  store.mode = 'signedout';
+  store.locked = true;
+  store.data = emptyData();
+  emit();
+}
+
+export function useLocalOnly() {
+  try { localStorage.setItem(STORAGE_LOCAL_ONLY, '1'); } catch { /* egal */ }
+  store.mode = 'local';
+  readBudgets();
+  openActive();
+  emit();
+}
+
+export function showSignIn() {
+  try { localStorage.removeItem(STORAGE_LOCAL_ONLY); } catch { /* egal */ }
+  store.mode = 'signedout';
+  store.locked = true;
+  emit();
+}
+
+export function dismissNotice() {
+  store.cloud.notice = null;
+  emit();
+}
+
+// Beim Start: mit gemerktem Schluessel direkt oeffnen, sonst Anmeldung zeigen.
+async function bootVault() {
+  const remembered = await cloud.rememberedKey();
+  const cache = readCache();
+  if (remembered && cache && cache.salt === remembered.salt) {
+    try {
+      const content = await unseal(remembered.key, cache);
+      vaultKey = { key: remembered.key, salt: remembered.salt };
+      vaultRev = cache.rev || 0;
+      store.cloud.email = remembered.email || cache.email || null;
+      useVault(content);
+      emit();
+      pull();
+      return;
+    } catch {
+      await cloud.forgetKey();
+    }
+  }
+  emit();
+}
+
+// Beim Zurueckkehren in die App und bei wiederhergestellter Verbindung abgleichen.
+if (typeof window !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') pull();
+    else if (store.cloud.pending) push();
+  });
+  window.addEventListener('online', () => pull());
+}
+
+// --- Budgets -----------------------------------------------------------------
+
 function readBudgets() {
+  store.budgets = defaultBudgets();
+  store.active = MAIN_ID;
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE_BUDGETS) || 'null');
     if (raw && Array.isArray(raw.list) && raw.list.some((b) => b.id === MAIN_ID)) {
@@ -42,11 +347,12 @@ function readBudgets() {
       store.active = raw.list.some((b) => b.id === raw.active) ? raw.active : MAIN_ID;
     }
   } catch {
-    // Standard: Mareike und Gemeinschaftskonto
+    // Standard: nur "Mein Budget"
   }
 }
 
 function writeBudgets() {
+  if (store.mode === 'vault') { persistVault(); return; }
   try {
     localStorage.setItem(STORAGE_BUDGETS, JSON.stringify({ list: store.budgets, active: store.active }));
   } catch {
@@ -64,6 +370,7 @@ function readRaw(id) {
 }
 
 function readData(id) {
+  if (store.mode === 'vault') return vault.books[id] || (vault.books[id] = emptyData());
   try {
     const raw = localStorage.getItem(dataKey(id));
     if (raw) {
@@ -80,7 +387,10 @@ export function activeBudget() {
   return store.budgets.find((b) => b.id === store.active) || store.budgets[0];
 }
 
+// Im Tresor ist ohnehin alles verschluesselt - dort gibt es keinen
+// zusaetzlichen Passwortschutz pro Budget.
 export function isProtected(id = store.active) {
+  if (store.mode === 'vault') return false;
   return Boolean(store.budgets.find((b) => b.id === id)?.protected);
 }
 
@@ -99,7 +409,7 @@ function openActive() {
 
 export async function switchBudget(id) {
   if (!store.budgets.some((b) => b.id === id)) return;
-  if (id !== store.active) {
+  if (id !== store.active && store.mode === 'local') {
     await queue;
     keys.delete(store.active);
   }
@@ -128,6 +438,7 @@ export async function unlock(password) {
 }
 
 export async function lock() {
+  if (store.mode === 'vault') { await cloudLock(); return; }
   if (!isProtected() || store.locked) return;
   await queue;
   keys.delete(store.active);
@@ -137,7 +448,7 @@ export async function lock() {
 
 // Setzt oder aendert das Passwort des aktiven (entsperrten) Budgets.
 export async function setPassword(password) {
-  if (store.locked) return;
+  if (store.locked || store.mode === 'vault') return;
   const salt = newSalt();
   keys.set(store.active, { key: await deriveKey(password, salt), salt });
   activeBudget().protected = true;
@@ -147,7 +458,7 @@ export async function setPassword(password) {
 }
 
 export async function removePassword() {
-  if (store.locked) return;
+  if (store.locked || store.mode === 'vault') return;
   keys.delete(store.active);
   delete activeBudget().protected;
   await save();
@@ -156,7 +467,7 @@ export async function removePassword() {
 }
 
 export function createBudget(name) {
-  const base = name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'budget';
+  const base = name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'budget';
   let id = base;
   for (let n = 2; store.budgets.some((b) => b.id === id) || id === MAIN_ID; n += 1) id = `${base}-${n}`;
   store.budgets.push({ id, name });
@@ -175,11 +486,15 @@ export function renameBudget(id, name) {
 export function deleteBudget(id) {
   if (id === MAIN_ID) return;
   keys.delete(id);
-  try {
-    localStorage.removeItem(dataKey(id));
-    localStorage.removeItem(backupKey(id));
-  } catch {
-    // nichts zu loeschen
+  if (store.mode === 'vault') {
+    delete vault.books[id];
+  } else {
+    try {
+      localStorage.removeItem(dataKey(id));
+      localStorage.removeItem(backupKey(id));
+    } catch {
+      // nichts zu loeschen
+    }
   }
   store.budgets = store.budgets.filter((b) => b.id !== id);
   switchBudget(MAIN_ID);
@@ -195,8 +510,18 @@ function emit() {
 }
 
 export function load() {
-  readBudgets();
-  openActive();
+  let localOnly = false;
+  try { localOnly = localStorage.getItem(STORAGE_LOCAL_ONLY) === '1'; } catch { /* egal */ }
+  if (cloud.cloudConfigured && !localOnly) {
+    store.mode = 'signedout';
+    store.locked = true;
+    store.cloud.email = cachedEmail();
+    bootVault();
+  } else {
+    store.mode = 'local';
+    readBudgets();
+    openActive();
+  }
   // Den Browser bitten, die Daten nicht bei Platzmangel wegzuraeumen.
   navigator.storage?.persist?.().catch(() => {});
   return store.data;
@@ -206,6 +531,11 @@ export function load() {
 // aelterer Stand nie einen neueren ueberschreibt.
 let queue = Promise.resolve();
 function save() {
+  if (store.mode === 'vault') {
+    vault.books[store.active] = store.data;
+    queue = queue.then(persistVault);
+    return queue;
+  }
   const id = store.active;
   const data = store.data;
   queue = queue.then(async () => {
@@ -235,8 +565,9 @@ export function update(mutator) {
   emit();
 }
 
-// Ein geschuetztes Budget wird verschluesselt exportiert - die Sicherungsdatei
-// laesst sich dann nur mit demselben Passwort wieder oeffnen.
+// Ein geschuetztes Budget (oder eines im Tresor) wird verschluesselt
+// exportiert - die Sicherungsdatei laesst sich dann nur mit demselben
+// Passwort wieder oeffnen.
 export async function exportJson() {
   try {
     localStorage.setItem(backupKey(store.active), new Date().toISOString());
@@ -244,6 +575,9 @@ export async function exportJson() {
     // ohne Speicher eben ohne Erinnerung
   }
   await queue;
+  if (store.mode === 'vault') {
+    return JSON.stringify({ sealed: await seal(vaultKey.key, vaultKey.salt, store.data) }, null, 2);
+  }
   if (isProtected()) {
     const stored = readRaw(store.active);
     if (isSealed(stored)) return JSON.stringify(stored, null, 2);
@@ -260,16 +594,25 @@ export function lastBackupAt() {
 }
 
 // Gibt eine Fehlermeldung zurueck oder null, wenn der Import geklappt hat.
-export function importJson(text) {
+export async function importJson(text) {
   let parsed;
   try {
     parsed = JSON.parse(text);
   } catch {
     return 'Die Datei ist keine gültige Sicherung.';
   }
-  // Verschluesselte Sicherung: so uebernehmen und sperren - geoeffnet wird
-  // sie mit dem Passwort, mit dem sie gespeichert wurde.
-  if (isSealed(parsed)) {
+  if (isSealed(parsed) && store.mode === 'vault') {
+    // Verschluesselte Sicherung im Tresor: nur lesbar, wenn sie aus diesem
+    // Tresor stammt (gleiches Salt, gleicher Schluessel).
+    try {
+      if (parsed.sealed.salt !== vaultKey.salt) throw new Error('fremd');
+      parsed = await unseal(vaultKey.key, parsed.sealed);
+    } catch {
+      return 'Diese Sicherung wurde mit einem anderen Passwort verschlüsselt. Bitte eine unverschlüsselte Sicherung oder eine aus diesem Konto wählen.';
+    }
+  } else if (isSealed(parsed)) {
+    // Verschluesselte Sicherung: so uebernehmen und sperren - geoeffnet wird
+    // sie mit dem Passwort, mit dem sie gespeichert wurde.
     try {
       localStorage.setItem(dataKey(store.active), JSON.stringify({ sealed: parsed.sealed }));
     } catch {

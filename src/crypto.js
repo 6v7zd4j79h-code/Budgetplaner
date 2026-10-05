@@ -48,3 +48,18 @@ export async function unseal(key, sealed) {
   );
   return JSON.parse(new TextDecoder().decode(plain));
 }
+
+// Fuer die Anmeldung beim Server: ein eigener Wert, aus dem Passwort
+// abgeleitet, aber mit anderem Salt als der Datenschluessel. Der Server
+// bekommt so nie das echte Passwort und kann die Daten nicht entschluesseln.
+export async function deriveLoginSecret(password, email) {
+  const material = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: new TextEncoder().encode(`budgetplaner-login:${email.trim().toLowerCase()}`), iterations: ITERATIONS, hash: 'SHA-256' },
+    material,
+    256,
+  );
+  return toBase64(bits);
+}

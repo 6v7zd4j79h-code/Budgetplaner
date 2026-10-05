@@ -5,8 +5,8 @@
 // wenn die letzte Sicherung lange her ist.
 
 import {
-  activeBudget, createBudget, deleteBudget, exportJson, importJson, isProtected, lastBackupAt, lock, removePassword,
-  renameBudget, resetAll, setPassword, store,
+  activeBudget, cloudAvailable, cloudSignOut, createBudget, deleteBudget, exportJson, importJson, isProtected,
+  lastBackupAt, lock, pull, removePassword, renameBudget, resetAll, setPassword, showSignIn, store,
 } from '../store.js';
 import { todayISO, formatDay } from '../dates.js';
 import { esc } from './dom.js';
@@ -26,11 +26,7 @@ export function backupOverdue() {
   return (Date.now() - new Date(last).getTime()) / 86400000 > REMIND_AFTER_DAYS;
 }
 
-export function render() {
-  const last = lastBackupAt();
-  const active = currentPalette();
-  const current = activeBudget();
-  const guarded = isProtected();
+function passwordCard(current, guarded) {
   return `
   <article class="card">
     <h2>Passwort · ${esc(current.name)}</h2>
@@ -50,7 +46,51 @@ export function render() {
     </form>
     <p class="hint" style="margin:10px 0 0"><strong>Wichtig:</strong> Das Passwort kann niemand zurücksetzen – auch nicht über die
       Sicherungsdatei. Wer es vergisst, kommt an die Daten dieses Budgets nicht mehr heran. Am besten im Passwort-Manager notieren.</p>
-  </article>
+  </article>`;
+}
+
+function syncTime(iso) {
+  if (!iso) return 'noch nie';
+  const d = new Date(iso);
+  return `${formatDay(iso.slice(0, 10))}, ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
+}
+
+// Konto und Abgleich zwischen Geraeten.
+function accountCard() {
+  if (!cloudAvailable()) return '';
+  if (store.mode !== 'vault') {
+    return `<article class="card">
+      <h2>Auf allen Geräten</h2>
+      <p>Melde dich an, damit deine Budgets auf Handy und PC gleich sind – verschlüsselt, nur du kannst sie lesen.
+        Die Budgets auf diesem Gerät werden beim ersten Anmelden übernommen.</p>
+      <button type="button" class="btn primary" data-action="show-sign-in">Anmelden oder Konto erstellen</button>
+    </article>`;
+  }
+  const c = store.cloud;
+  const status = c.error
+    ? `<p class="warn">Abgleich gerade nicht möglich: ${esc(c.error)}${c.pending ? ' Deine Änderungen sind auf diesem Gerät gespeichert und werden nachgeholt.' : ''}</p>`
+    : `<p class="muted">${c.pending ? 'Änderungen werden hochgeladen …' : `Abgeglichen: ${esc(syncTime(c.lastSync))}`}</p>`;
+  return `<article class="card">
+    <h2>Konto &amp; Abgleich</h2>
+    <p>Angemeldet als <strong>${esc(c.email || '–')}</strong>. Alle Budgets werden verschlüsselt auf deinen Geräten abgeglichen.</p>
+    ${status}
+    <div class="btn-row">
+      <button type="button" class="btn" data-action="sync-now">Jetzt abgleichen</button>
+      <button type="button" class="btn" data-action="lock">Sperren</button>
+      <button type="button" class="btn" data-action="sign-out">Abmelden</button>
+    </div>
+    <p class="hint" style="margin:10px 0 0">„Sperren“ fragt beim nächsten Öffnen das Passwort ab. „Abmelden“ entfernt die Daten zusätzlich von diesem Gerät – auf dem Server und deinen anderen Geräten bleiben sie.</p>
+  </article>`;
+}
+
+export function render() {
+  const last = lastBackupAt();
+  const active = currentPalette();
+  const current = activeBudget();
+  const guarded = isProtected();
+  return `
+  ${accountCard()}
+  ${store.mode === 'vault' ? '' : passwordCard(current, guarded)}
 
   <article class="card">
     <h2>Budgets</h2>
@@ -147,7 +187,7 @@ export const actions = {
       el.value = '';
       return;
     }
-    const problem = importJson(await file.text());
+    const problem = await importJson(await file.text());
     if (problem) {
       const error = document.getElementById('importError');
       error.textContent = problem;
@@ -175,6 +215,17 @@ export const actions = {
   },
   lock() {
     lock();
+  },
+  'show-sign-in'() {
+    showSignIn();
+  },
+  async 'sync-now'(_el, _event, ctx) {
+    await pull();
+    ctx.rerender();
+  },
+  async 'sign-out'() {
+    if (!window.confirm('Abmelden und die Daten von diesem Gerät entfernen? Auf deinen anderen Geräten und auf dem Server bleiben sie.')) return;
+    await cloudSignOut();
   },
   reset() {
     if (!window.confirm('Wirklich alle Daten auf diesem Gerät löschen?')) return;

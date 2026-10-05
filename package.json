@@ -17,6 +17,7 @@
     "vite-plugin-pwa": "^1.0.3"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "tesseract.js": "^7.0.0"
   }
 }

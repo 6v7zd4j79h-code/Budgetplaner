@@ -1,8 +1,9 @@
 import './styles.css';
 import { ensureMonth, monthSummary } from './budget.js';
 import { addMonths, monthKey, monthLabel } from './dates.js';
-import { activeBudget, isProtected, load, lock, store, subscribe, switchBudget, update } from './store.js';
+import { activeBudget, dismissNotice, isProtected, load, lock, store, subscribe, switchBudget, update } from './store.js';
 import * as lockView from './ui/lock.js';
+import * as accountView from './ui/account.js';
 import * as accountsView from './ui/accounts.js';
 import { ALL, activeAccounts, viewFor } from './accounts.js';
 import * as overview from './ui/overview.js';
@@ -56,7 +57,7 @@ function renderBudgetSwitch() {
   if (several) {
     budgetSelect.innerHTML = store.budgets.map((b) => `<option value="${b.id}" ${b.id === store.active ? 'selected' : ''}>${b.protected ? '🔒 ' : ''}${b.name.replace(/</g, '&lt;')}</option>`).join('');
   }
-  lockBtn.hidden = !isProtected() || store.locked;
+  lockBtn.hidden = store.mode === 'vault' ? false : (!isProtected() || store.locked);
 }
 lockBtn.addEventListener('click', () => lock());
 budgetSelect.addEventListener('change', () => { ui.account = ALL; switchBudget(budgetSelect.value); });
@@ -115,7 +116,25 @@ function activeSelector() {
   return null;
 }
 
+function noticeBar() {
+  if (!store.cloud.notice) return '';
+  return `<div class="banner notice" role="status"><span>${store.cloud.notice.replace(/</g, '&lt;')}</span>
+    <button type="button" class="btn" data-action="dismiss-notice">OK</button></div>`;
+}
+
 function render() {
+  if (store.mode === 'signedout') {
+    renderBudgetSwitch();
+    budgetSelect.hidden = true;
+    brandName.hidden = false;
+    lockBtn.hidden = true;
+    monthBar.hidden = true;
+    bannerEl.hidden = true;
+    document.title = 'Anmelden · Budgetplaner';
+    navEl.hidden = true;
+    viewEl.innerHTML = accountView.render();
+    return;
+  }
   if (store.locked) {
     renderBudgetSwitch();
     monthBar.hidden = true;
@@ -130,6 +149,7 @@ function render() {
     update((data) => ensureMonth(data, ui.key));
     return;
   }
+  navEl.hidden = false;
   const selector = ui.pendingFocus || activeSelector();
   ui.pendingFocus = null;
   const view = VIEWS[ui.view];
@@ -143,7 +163,7 @@ function render() {
   });
   bannerEl.hidden = !backupOverdue() || ui.view === 'settings';
 
-  viewEl.innerHTML = accountFilter() + view.module.render(context());
+  viewEl.innerHTML = noticeBar() + accountFilter() + view.module.render(context());
   writeHash();
 
   if (selector) {
@@ -190,6 +210,11 @@ document.getElementById('bannerBtn').addEventListener('click', () => goto('setti
 // --- Aktionen der Ansichten ------------------------------------------------
 
 function dispatch(el, event) {
+  if (el.dataset.action === 'dismiss-notice') { dismissNotice(); return; }
+  if (store.mode === 'signedout') {
+    accountView.actions[el.dataset.action]?.(el, event, { rerender: scheduleRender });
+    return;
+  }
   if (store.locked) {
     // Gesperrt gibt es keine Daten, also auch keinen Monat zum Berechnen.
     lockView.actions[el.dataset.action]?.(el, event);
