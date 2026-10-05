@@ -7,6 +7,7 @@ import { parseMoney } from '../money.js';
 import { update } from '../store.js';
 import { esc, eur } from './dom.js';
 import { entryRest, entryWaste, itemKey, monthWaste, rememberedWaste } from '../waste.js';
+import { startFor } from './receipt.js';
 
 let lastLineId = null;
 // Welche Buchung gerade aufgeklappt ist (Artikel bearbeiten).
@@ -30,6 +31,7 @@ function itemsPanel(e) {
       <label class="waste-toggle"><input type="checkbox" name="waste" checked><span>unnötig</span></label>
       <button type="submit" class="btn">+ Artikel</button>
     </form>
+    <button type="button" class="link-btn" data-action="entry-scan" data-key="${esc(e.id)}">📷 Bon zu dieser Buchung scannen</button>
     <p class="item-rest ${rest < 0 ? 'neg' : 'muted'}">${rest < 0
       ? `Die Artikel sind ${eur(-rest)} teurer als die Buchung – Preis prüfen.`
       : `Rest (nötig): ${eur(rest)}`}</p>
@@ -101,6 +103,12 @@ export function render({ data, key }) {
   const waste = monthWaste(data.log, key, names);
 
   return `
+  <article class="card scan-teaser">
+    <div><h2>Kassenbon scannen</h2>
+      <p class="hint">Foto machen – die App liest die Artikel, du markierst, was unnötig war.</p></div>
+    <button type="button" class="btn primary" data-action="goto" data-view="receipt">📷 Scannen</button>
+  </article>
+
   <article class="card">
     <h2>Ausgabe eintragen</h2>
     ${lines.length ? `
@@ -155,6 +163,10 @@ export const actions = {
       const entry = data.log.find((e) => e.id === el.dataset.key);
       if (entry) entry.waste = !entry.waste;
     });
+  },
+  'entry-scan'(el, _event, ctx) {
+    startFor(el.dataset.key);
+    ctx.show('receipt');
   },
   'entry-open'(el, _event, ctx) {
     openId = openId === el.dataset.key ? null : el.dataset.key;

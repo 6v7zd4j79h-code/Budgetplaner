@@ -39,6 +39,16 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
+        // Die Texterkennung (rund 6 MB) nicht beim ersten Start laden, sondern
+        // erst beim ersten Bon-Scan - danach liegt sie im Cache und geht offline.
+        globIgnores: ['ocr/**'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/ocr\//,
+            handler: 'CacheFirst',
+            options: { cacheName: 'texterkennung', expiration: { maxEntries: 10 } },
+          },
+        ],
       },
     }),
   ],

@@ -28,3 +28,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Texterkennung - wird vor dev/build aus node_modules kopiert
+public/ocr/

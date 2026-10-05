@@ -9,6 +9,7 @@ import * as subs from './ui/subscriptions.js';
 import * as goals from './ui/goals.js';
 import * as settings from './ui/settings.js';
 import * as importer from './ui/importer.js';
+import * as receipt from './ui/receipt.js';
 import { backupOverdue } from './ui/settings.js';
 import { applyPalette } from './palette.js';
 
@@ -21,6 +22,7 @@ const VIEWS = {
   settings: { module: settings, title: 'Sicherung', icon: '⚙', monthly: false },
   // Nicht in der Navigation - erreichbar ueber Budget und Ausgaben.
   import: { module: importer, title: 'Kontoauszug einlesen', icon: '⇩', monthly: false, hidden: true },
+  receipt: { module: receipt, title: 'Kassenbon scannen', icon: '📷', monthly: false, hidden: true },
 };
 
 const ui = {
