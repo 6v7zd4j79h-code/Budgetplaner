@@ -5,6 +5,7 @@ import { SECTIONS, distribution, expenseActuals, subscriptionSummary, goalProgre
 import { monthName } from '../dates.js';
 import { donut, legend, meter } from './charts.js';
 import { esc, eur, signClass } from './dom.js';
+import { monthWaste } from '../waste.js';
 
 export function render({ data, key, summary }) {
   const { totals, start, availableActual, availableBudget } = summary;
@@ -49,6 +50,8 @@ export function render({ data, key, summary }) {
   const openSum = openBills.reduce((sum, l) => sum + l.budget, 0);
   const subs = subscriptionSummary(data.subscriptions);
   const goals = data.goals.slice(0, 3);
+  const names = Object.fromEntries(month.lines.expenses.map((l) => [l.id, l.name]));
+  const waste = monthWaste(data.log, key, names);
 
   return `
   <section class="grid grid-hero">
@@ -88,7 +91,15 @@ export function render({ data, key, summary }) {
     </article>
   </section>
 
-  <section class="grid grid-3">
+  <section class="grid grid-4">
+    <article class="card tile waste-tile">
+      <h2>Unnötig ausgegeben</h2>
+      <p class="big">${eur(waste.total)}</p>
+      <p class="muted">${waste.total ? `${Math.round(waste.share * 100)} % der Ausgaben` : 'noch nichts markiert'}</p>
+      ${waste.items.length ? `<ul class="mini">${waste.items.slice(0, 3).map((i) => `<li>${esc(i.name)} <span>${eur(i.amount)}</span></li>`).join('')}</ul>` : ''}
+      <button type="button" class="btn ghost" data-action="goto" data-view="log">Ausgaben einordnen</button>
+    </article>
+
     <article class="card tile">
       <h2>Offene Rechnungen</h2>
       <p class="big">${openBills.length}</p>

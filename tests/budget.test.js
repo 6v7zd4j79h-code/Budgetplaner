@@ -213,3 +213,49 @@ test('Sicherung wird vor dem Import geprueft', () => {
   assert.match(validateData({ ...good, log: [{ date: 'gestern', amount: 1 }] }), /Buchung/);
   assert.match(validateData({ ...good, months: { 'Okt': {} } }), /beschädigt/);
 });
+
+// --- Unnoetige Ausgaben -----------------------------------------------------
+
+import { entryWaste, entryRest, monthWaste, itemKey, rememberedWaste } from '../src/waste.js';
+
+test('unnoetig: ganze Buchung oder einzelne Artikel', () => {
+  assert.equal(entryWaste({ amount: 2780, waste: true }), 2780);
+  assert.equal(entryWaste({ amount: 6130 }), 0);
+  const edeka = {
+    amount: 6130,
+    items: [
+      { name: 'Gewürzmischung', amount: 1800, waste: true },
+      { name: 'KoRo Erdnussbutter', amount: 899, waste: true },
+      { name: 'Milch', amount: 119, waste: false },
+    ],
+  };
+  assert.equal(entryWaste(edeka), 2699);
+  assert.equal(entryRest(edeka), 6130 - 1800 - 899 - 119);
+});
+
+test('Monatsueberblick: Summe, Anteil, groesste Posten, nach Laden', () => {
+  const log = [
+    { date: '2026-10-04', lineId: 'food', note: 'EDEKA', amount: 6130, items: [
+      { name: 'Gewürzmischung', amount: 1800, waste: true },
+      { name: 'KoRo Erdnussbutter', amount: 899, waste: true },
+    ] },
+    { date: '2026-10-05', lineId: 'fun', note: 'Lieferando', amount: 2780, waste: true },
+    { date: '2026-10-06', lineId: 'food', note: 'REWE', amount: 4290 },
+    { date: '2026-09-30', lineId: 'fun', note: 'Alt', amount: 9999, waste: true },
+  ];
+  const w = monthWaste(log, '2026-10');
+  assert.equal(w.total, 1800 + 899 + 2780);
+  assert.equal(w.spent, 6130 + 2780 + 4290);
+  assert.equal(Math.round(w.share * 100), 42);
+  assert.deepEqual(w.items.map((i) => i.name), ['Lieferando', 'Gewürzmischung', 'KoRo Erdnussbutter']);
+  assert.deepEqual(w.byShop, [{ shop: 'Lieferando', amount: 2780 }, { shop: 'EDEKA', amount: 2699 }]);
+});
+
+test('Artikel werden wiedererkannt, auch mit anderer Schreibweise und Menge', () => {
+  assert.equal(itemKey('KoRo Erdnussbutter 500g'), itemKey('KORO ERDNUSSBUTTER'));
+  assert.equal(itemKey('Milch 1,5 l'), 'milch');
+  const rules = { [itemKey('KoRo Erdnussbutter')]: true, milch: false };
+  assert.equal(rememberedWaste(rules, 'KORO Erdnussbutter 1kg'), true);
+  assert.equal(rememberedWaste(rules, 'Milch'), false);
+  assert.equal(rememberedWaste(rules, 'Brot'), null);
+});
