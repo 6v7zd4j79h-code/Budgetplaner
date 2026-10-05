@@ -38,8 +38,9 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 1. ~~Repository auf GitHub anlegen und den Code hochladen~~ erledigt am 03.10.:
    https://github.com/6v7zd4j79h-code/Budgetplaner (privat, Branch `main`)
-2. Bei Netlify verbinden (keine Umgebungsvariablen nötig; für eine zweite,
-   blaue Seite `VITE_FARBE=blau` setzen)
+2. ~~Bei Netlify verbinden~~ erledigt am 05.10.:
+   **https://budget-kompass.netlify.app** (Pflaume, keine Umgebungsvariablen).
+   Für eine zweite, blaue Seite `VITE_FARBE=blau` setzen.
 3. Auf dem Handy zum Home-Bildschirm hinzufügen
 4. Echte Beträge eintragen und gleich die erste Sicherung speichern
 

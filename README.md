@@ -1,5 +1,7 @@
 # Budgetplaner
 
+Live: https://budget-kompass.netlify.app
+
 Persönlicher Budgetplaner als Web-App (PWA). Vorbild ist eine Budget-Tabelle
 im Stil von *budget.profi.store*, nur eben als App fürs Handy, Tablet und den PC.
 
