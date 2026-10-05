@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-03
+**Letzte Sitzung:** 2026-10-03 / 05
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -36,13 +36,18 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
 
-1. Repository auf GitHub anlegen und den Code hochladen
+1. ~~Repository auf GitHub anlegen und den Code hochladen~~ erledigt am 03.10.:
+   https://github.com/6v7zd4j79h-code/Budgetplaner (privat, Branch `main`)
 2. Bei Netlify verbinden (keine Umgebungsvariablen nötig; für eine zweite,
    blaue Seite `VITE_FARBE=blau` setzen)
 3. Auf dem Handy zum Home-Bildschirm hinzufügen
 4. Echte Beträge eintragen und gleich die erste Sicherung speichern
 
 ## Offene Punkte / Hinweise
+
+- **Kopie auf dem PC** unter `Downloads/Projekte/Budgetplaner` (entpackte ZIP).
+  Nur Sicherung – maßgeblich ist GitHub. Am PC weiterarbeiten:
+  `git clone https://github.com/6v7zd4j79h-code/Budgetplaner`
 
 - **Daten hängen an Gerät und Adresse.** Browserdaten löschen = Daten weg,
   wenn keine Sicherung existiert. Die App erinnert nach 30 Tagen.
