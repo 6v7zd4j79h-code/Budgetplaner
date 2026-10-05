@@ -42,6 +42,20 @@ Am 05.10. am Mac ergänzt (parallel zur PC-Sitzung, auf deren Stand aufgebaut):
 - Septemberdaten (beide Budgets) als Importdateien erzeugt – liegen bewusst
   NICHT im Repo, sondern unter `~/Budgetplan-Sicherungen` auf dem Mac.
 
+Am 05.10. am Mac, zweiter Teil:
+- **Konten im Budget** (neue Ansicht „Konten“, erreichbar über die
+  Übersicht): Kontostand heute, Stand am Monatsersten, Dispo-Rahmen,
+  Geschäftskonto, „nicht mehr genutzt“. Startbetrag eines Monats = Summe der
+  Kontostände am Monatsersten.
+- Dispo und andere Schulden (z. B. Klarna) werden getrennt gezeigt und nie
+  als verfügbares Geld gezählt.
+- **Kontofilter** über Übersicht, Budget und Ausgaben („Alle Konten“ oder
+  ein Konto). Budgetzeilen und Buchungen tragen Konto und „geschäftlich“.
+- Sparziel „Minus ausgleichen“ folgt automatisch dem Kontostand.
+- Umsätze wurden einmalig mit Mareike gemeinsam aus dem Online-Banking
+  gelesen (sie meldet sich selbst an). Importdateien liegen nur auf dem Mac
+  unter `~/Budgetplan-Sicherungen`.
+
 Am 05.10. ergänzt (Wunsch: sehen, wo Geld für Unnötiges hingeht):
 - **Kontoauszug einlesen** (CSV, nur im Browser): Sparkasse, Commerzbank,
   Revolut, PayPal, Stripe, jede andere CSV mit Datum und Betrag (z. B.
