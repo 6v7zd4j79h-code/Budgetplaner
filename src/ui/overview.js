@@ -6,7 +6,7 @@ import { monthName } from '../dates.js';
 import { donut, legend, meter } from './charts.js';
 import { esc, eur, signClass } from './dom.js';
 import { monthWaste } from '../waste.js';
-import { activeAccounts, balancesSummary, overdraftRoom } from '../accounts.js';
+import { activeAccounts, balancesSummary, loanProgress, loansOf, loansSummary, overdraftRoom } from '../accounts.js';
 import { formatDay } from '../dates.js';
 
 function accountsCard(data, account) {
@@ -33,6 +33,33 @@ function accountsCard(data, account) {
     ${sum.overdraftUsed ? `<p class="warn">${eur(sum.overdraftUsed)} im Dispo. Der Dispo-Rahmen ist kein verfügbares Geld.</p>` : ''}
     ${sum.otherDebt ? `<p class="warn">${eur(sum.otherDebt)} offene Schulden (z. B. Klarna).</p>` : ''}
     <button type="button" class="btn ghost" data-action="goto" data-view="accounts">Kontostände aktualisieren</button>
+  </article>`;
+}
+
+function monthText(ym) {
+  if (!ym) return '';
+  const [y, m] = ym.split('-');
+  return `${m}/${y}`;
+}
+
+function loansCard(data, account) {
+  const loans = loansOf(data);
+  if (!loans.length || (account && account !== 'alle')) return '';
+  const sum = loansSummary(loans);
+  const rows = loans.map((l) => {
+    const pct = Math.round(loanProgress(l) * 100);
+    return `<li class="loan-row">
+      <div class="cat-head"><span>${esc(l.name)}${l.payer ? ` <span class="muted small">· zahlt ${esc(l.payer)}</span>` : ''}</span>
+        <span>${eur(-(l.balance || 0))}</span></div>
+      ${meter(l.original ? l.original + (l.balance || 0) : 0, l.original || 1, { invert: true })}
+      <div class="muted small">${pct} % getilgt · ${eur(l.rate || 0)}/Monat${l.end ? ` · bis ${esc(monthText(l.end))}` : ''}${l.endNote ? ` · ${esc(l.endNote)}` : ''}</div>
+    </li>`;
+  }).join('');
+  return `<article class="card loans-card">
+    <header class="section-head"><h2>Kredite</h2><span class="section-sum">${eur(sum.total)}</span></header>
+    <p class="muted">${sum.count} Kredite · zusammen ${eur(sum.monthly)} Raten im Monat</p>
+    <ul class="cats">${rows}</ul>
+    <button type="button" class="btn ghost" data-action="goto" data-view="accounts">Restschulden aktualisieren</button>
   </article>`;
 }
 
@@ -84,6 +111,7 @@ export function render({ data, key, summary, account }) {
 
   return `
   ${accountsCard(data, account)}
+  ${loansCard(data, account)}
   <section class="grid grid-hero">
     <article class="card hero">
       <h2>Verfügbarer Betrag</h2>

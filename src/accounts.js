@@ -15,8 +15,35 @@ export function accountsOf(data) {
   return Array.isArray(data.accounts) ? data.accounts : [];
 }
 
+// Kredite sind Konten mit kind: 'loan' und zusaetzlich
+//   { original: Cent, rate: Cent pro Monat, interest: Prozent, end: 'JJJJ-MM',
+//     endNote: Text, payer: Text }
+// Sie stehen getrennt von den Konten - sonst verschwaende der Dispo in einer
+// Summe aus Hauskredit und Girokonto.
+export function isLoan(account) {
+  return account.kind === 'loan';
+}
+
 export function activeAccounts(data) {
-  return accountsOf(data).filter((a) => !a.closed);
+  return accountsOf(data).filter((a) => !a.closed && !isLoan(a));
+}
+
+export function loansOf(data) {
+  return accountsOf(data).filter((a) => isLoan(a) && !a.closed);
+}
+
+export function loansSummary(loans) {
+  return {
+    total: loans.reduce((s, l) => s + Math.max(0, -(l.balance || 0)), 0),
+    monthly: loans.reduce((s, l) => s + (l.rate || 0), 0),
+    count: loans.length,
+  };
+}
+
+// Anteil, der schon getilgt ist (0..1).
+export function loanProgress(loan) {
+  if (!loan.original || loan.balance == null) return 0;
+  return Math.max(0, Math.min(1, 1 - (-loan.balance) / loan.original));
 }
 
 // Spielraum bis zur Dispo-Grenze. Bei 4.500 € Dispo und -3.000 € Stand: 1.500 €.
@@ -26,7 +53,7 @@ export function overdraftRoom(account) {
 }
 
 export function balancesSummary(accounts) {
-  const known = accounts.filter((a) => a.balance != null);
+  const known = accounts.filter((a) => a.balance != null && !isLoan(a));
   return {
     total: known.reduce((s, a) => s + a.balance, 0),
     room: known.reduce((s, a) => s + overdraftRoom(a), 0),

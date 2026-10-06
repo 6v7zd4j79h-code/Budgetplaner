@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { emptyData, monthSummary, monthFromPrevious } from '../src/budget.js';
-import { ALL, accountId, balancesSummary, openingSum, overdraftRoom, resolveGoal, viewFor } from '../src/accounts.js';
+import { ALL, accountId, activeAccounts, balancesSummary, loanProgress, loansOf, loansSummary, openingSum, overdraftRoom, resolveGoal, viewFor } from '../src/accounts.js';
 
 const line = (id, budget, extra = {}) => ({ id, name: id, budget, actual: null, done: false, ...extra });
 
@@ -87,4 +87,13 @@ test('Alle Konten nimmt die Summe der Monatsanfangsstaende als Startbetrag', () 
   const data = book();
   data.months['2026-10'].startBalance = 5000;
   assert.equal(monthSummary(viewFor(data, ALL), '2026-10').start, 5000);
+});
+
+test('Kredite zaehlen nicht zu den Kontostaenden, sondern eigen', () => {
+  const data = book();
+  data.accounts.push({ id: 'kredit', name: 'Beispielkredit', kind: 'loan', balance: -9000000, original: 10000000, rate: 50000 });
+  assert.equal(balancesSummary(data.accounts).total, -301640);
+  assert.ok(!activeAccounts(data).some((a) => a.id === 'kredit'));
+  assert.deepEqual(loansSummary(loansOf(data)), { total: 9000000, monthly: 50000, count: 1 });
+  assert.equal(Math.round(loanProgress(loansOf(data)[0]) * 100), 10);
 });

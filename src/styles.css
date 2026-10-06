@@ -482,7 +482,7 @@ h2 {
 :focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 
 /* Eingabefelder */
-input[type=text], input[type=password], input[type=email], input[type=date], select {
+input[type=text], input[type=password], input[type=email], input[type=date], input[type=month], select {
   min-height: 44px; padding: 0 10px; width: 100%; min-width: 0;
   border: 1px solid var(--border); border-radius: 9px;
   background: var(--surface-2);
@@ -839,3 +839,7 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 .account-warning { margin-top: 14px; }
 .notice-ok { background: var(--primary-soft); color: var(--text); padding: 8px 12px; border-radius: 10px; }
 .entry-form .remember-toggle { display: flex; flex-direction: row; grid-template-columns: none; }
+
+.section-title { margin: 8px 0 -4px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.loan-row { display: grid; gap: 4px; }
+input[type=month] { min-height: 40px; }

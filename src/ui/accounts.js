@@ -3,7 +3,7 @@
 // nie zum verfuegbaren Betrag gezaehlt.
 
 import { newId } from '../budget.js';
-import { accountId, accountsOf, balancesSummary, overdraftRoom } from '../accounts.js';
+import { accountId, accountsOf, balancesSummary, isLoan, loanProgress, overdraftRoom } from '../accounts.js';
 import { formatDay, monthName, todayISO } from '../dates.js';
 import { parseMoney } from '../money.js';
 import { update } from '../store.js';
@@ -35,8 +35,27 @@ function accountCard(a, key, goals) {
   </article>`;
 }
 
+function loanCard(l) {
+  return `<article class="card account loan">
+    <header class="section-head">
+      <input class="name" type="text" data-action="acc-name" data-key="${esc(l.id)}" value="${esc(l.name)}" aria-label="Name des Kredits">
+      <button type="button" class="del" data-action="acc-del" data-key="${esc(l.id)}" aria-label="${esc(l.name)} löschen" title="Kredit löschen">×</button>
+    </header>
+    <p class="account-balance neg">${eur(-(l.balance || 0))} <span class="muted small">offen</span></p>
+    <p class="muted">${Math.round(loanProgress(l) * 100)} % von ${eur(l.original || 0)} getilgt${l.payer ? ` · zahlt ${esc(l.payer)}` : ''}${l.balanceDate ? ` · Stand ${esc(formatDay(l.balanceDate))}` : ''}</p>
+    <div class="account-fields">
+      <label>Restschuld ${moneyInput({ action: 'loan-rest', key: l.id, value: l.balance == null ? null : -l.balance, label: `Restschuld ${l.name}` })}</label>
+      <label>Rate pro Monat ${moneyInput({ action: 'loan-rate', key: l.id, value: l.rate, label: `Rate ${l.name}` })}</label>
+      <label>Ende <input type="month" data-action="loan-end" data-key="${esc(l.id)}" value="${esc(l.end || '')}" aria-label="Ende ${esc(l.name)}"></label>
+    </div>
+    ${l.endNote ? `<p class="hint">${esc(l.endNote)}</p>` : ''}
+  </article>`;
+}
+
 export function render({ data, key }) {
-  const accounts = accountsOf(data);
+  const all = accountsOf(data);
+  const accounts = all.filter((a) => !isLoan(a));
+  const loans = all.filter(isLoan);
   const sum = balancesSummary(accounts.filter((a) => !a.closed));
   return `
   <article class="card">
@@ -50,11 +69,26 @@ export function render({ data, key }) {
 
   ${accounts.length ? `<section class="grid accounts">${accounts.map((a) => accountCard(a, key, data.goals)).join('')}</section>` : ''}
 
+  ${loans.length ? `<h2 class="section-title">Kredite</h2><section class="grid accounts">${loans.map(loanCard).join('')}</section>` : ''}
+
   <article class="card">
     <h2>Konto hinzufügen</h2>
     <form class="entry-form" data-action="acc-add" autocomplete="off">
       <label>Name<input type="text" name="name" required maxlength="30" placeholder="z. B. Sparkasse, PayPal, Klarna"></label>
       <label>Dispo-Rahmen<input class="money" type="text" name="overdraft" inputmode="decimal" placeholder="keiner" autocomplete="off"></label>
+      <button type="submit" class="btn primary">Anlegen</button>
+    </form>
+  </article>
+
+  <article class="card">
+    <h2>Kredit hinzufügen</h2>
+    <form class="entry-form" data-action="loan-add" autocomplete="off">
+      <label>Name<input type="text" name="name" required maxlength="40" placeholder="z. B. Hauskredit"></label>
+      <label>Ursprünglicher Betrag<input class="money" type="text" name="original" inputmode="decimal" placeholder="0,00" required autocomplete="off"></label>
+      <label>Restschuld heute<input class="money" type="text" name="rest" inputmode="decimal" placeholder="0,00" required autocomplete="off"></label>
+      <label>Rate pro Monat<input class="money" type="text" name="rate" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
+      <label>Ende<input type="month" name="end"></label>
+      <label>Wer zahlt<input type="text" name="payer" maxlength="30" placeholder="z. B. Gemeinschaftskonto"></label>
       <button type="submit" class="btn primary">Anlegen</button>
     </form>
   </article>`;
@@ -80,6 +114,32 @@ export const actions = {
     });
     ctx.focus('form[data-action="acc-add"] input[name="name"]');
   },
+  'loan-add'(form, event, ctx) {
+    event.preventDefault();
+    const f = new FormData(form);
+    const name = String(f.get('name')).trim();
+    const original = parseMoney(String(f.get('original')));
+    const rest = parseMoney(String(f.get('rest')));
+    if (!name || original == null || rest == null) return;
+    update((data) => {
+      data.accounts = accountsOf(data);
+      data.accounts.push({
+        id: accountId(name, data.accounts), name, kind: 'loan', original: Math.abs(original), balance: -Math.abs(rest),
+        balanceDate: todayISO(), rate: Math.abs(parseMoney(String(f.get('rate'))) ?? 0),
+        end: String(f.get('end') || '') || null, payer: String(f.get('payer') || '').trim() || null, overdraft: 0, openings: {},
+      });
+    });
+    ctx.focus('form[data-action="loan-add"] input[name="name"]');
+  },
+  'loan-rest'(el) {
+    edit(el.dataset.key, (a) => {
+      const value = parseMoney(el.value);
+      a.balance = value == null ? null : -Math.abs(value);
+      a.balanceDate = todayISO();
+    });
+  },
+  'loan-rate'(el) { edit(el.dataset.key, (a) => { a.rate = Math.abs(parseMoney(el.value) ?? 0); }); },
+  'loan-end'(el) { edit(el.dataset.key, (a) => { a.end = el.value || null; }); },
   'acc-name'(el) { edit(el.dataset.key, (a) => { a.name = el.value.trim() || a.name; }); },
   'acc-balance'(el) {
     edit(el.dataset.key, (a) => {
