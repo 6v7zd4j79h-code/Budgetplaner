@@ -11,7 +11,7 @@ const line = (id, budget, extra = {}) => ({ id, name: id, budget, actual: null, 
 function book() {
   const data = emptyData();
   data.accounts = [
-    { id: 'spk', name: 'Sparkasse', overdraft: 450000, balance: -303140, balanceDate: '2026-09-01', openings: { '2026-10': -100000 } },
+    { id: 'spk', name: 'Sparkasse', overdraft: 400000, balance: -250000, balanceDate: '2026-09-01', openings: { '2026-10': -100000 } },
     { id: 'pp', name: 'PayPal', overdraft: 0, balance: 1500, openings: { '2026-10': 2000 } },
   ];
   data.months['2026-10'] = {
@@ -32,13 +32,13 @@ function book() {
 }
 
 test('Dispo-Spielraum ist Kontostand plus Rahmen, nicht verfuegbares Geld', () => {
-  assert.equal(overdraftRoom({ balance: -303140, overdraft: 450000 }), 146860);
+  assert.equal(overdraftRoom({ balance: -250000, overdraft: 400000 }), 150000);
   const s = balancesSummary(book().accounts);
-  assert.equal(s.total, -301640);
-  assert.equal(s.overdraftUsed, 303140);
-  const withKlarna = balancesSummary([...book().accounts, { id: 'k', name: 'Klarna', overdraft: 0, balance: -441394 }]);
-  assert.equal(withKlarna.overdraftUsed, 303140);
-  assert.equal(withKlarna.otherDebt, 441394);
+  assert.equal(s.total, -248500);
+  assert.equal(s.overdraftUsed, 250000);
+  const withKlarna = balancesSummary([...book().accounts, { id: 'k', name: 'Klarna', overdraft: 0, balance: -100000 }]);
+  assert.equal(withKlarna.overdraftUsed, 250000);
+  assert.equal(withKlarna.otherDebt, 100000);
 });
 
 test('Startbetrag aus den Kontostaenden am Monatsersten', () => {
@@ -92,7 +92,7 @@ test('Alle Konten nimmt die Summe der Monatsanfangsstaende als Startbetrag', () 
 test('Kredite zaehlen nicht zu den Kontostaenden, sondern eigen', () => {
   const data = book();
   data.accounts.push({ id: 'kredit', name: 'Beispielkredit', kind: 'loan', balance: -9000000, original: 10000000, rate: 50000 });
-  assert.equal(balancesSummary(data.accounts).total, -301640);
+  assert.equal(balancesSummary(data.accounts).total, -248500);
   assert.ok(!activeAccounts(data).some((a) => a.id === 'kredit'));
   assert.deepEqual(loansSummary(loansOf(data)), { total: 9000000, monthly: 50000, count: 1 });
   assert.equal(Math.round(loanProgress(loansOf(data)[0]) * 100), 10);
