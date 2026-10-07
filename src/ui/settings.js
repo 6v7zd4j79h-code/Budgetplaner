@@ -5,8 +5,9 @@
 // wenn die letzte Sicherung lange her ist.
 
 import {
-  activeBudget, canShare, cloudAvailable, cloudSignOut, createBudget, inviteToBudget, joinBudget, shareBudget, deleteBudget, exportJson, importJson, isProtected,
-  lastBackupAt, lock, pull, removePassword, renameBudget, resetAll, setPassword, showSignIn, store,
+  activeBudget, canShare, cloudAvailable, cloudSignOut, createBudget, deleteBudget, exportJson, importJson, inviteToBudget,
+  isProtected, joinBudget, lastBackupAt, lock, pull, removePassword, renameBudget, resetAll, setPassword, shareBudget,
+  showSignIn, store, switchBudget,
 } from '../store.js';
 import { todayISO, formatDay } from '../dates.js';
 import { esc } from './dom.js';
