@@ -63,3 +63,42 @@ export async function deriveLoginSecret(password, email) {
   );
   return toBase64(bits);
 }
+
+// --- Gemeinsame Budgets ---------------------------------------------------------
+// Ein gemeinsames Budget hat einen eigenen, zufaelligen Schluessel. Er liegt
+// (als Text) in den privaten Tresoren aller Mitglieder - dort ist er durch
+// deren Passwort geschuetzt.
+
+export async function newSpaceKey() {
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+  return toBase64(await crypto.subtle.exportKey('raw', key));
+}
+
+export function importSpaceKey(raw) {
+  return crypto.subtle.importKey('raw', fromBase64(raw), 'AES-GCM', false, ['encrypt', 'decrypt']);
+}
+
+// Einladungscode: 20 Zeichen aus einem Alphabet ohne Verwechsler (kein 0/O, 1/I/L),
+// also rund 100 Bit Zufall. Angezeigt in Vierergruppen.
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+export function newInviteCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(20));
+  const chars = [...bytes].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('');
+  return chars.match(/.{4}/g).join('-');
+}
+
+export function normalizeCode(code) {
+  return String(code).toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// Was der Server vom Code sieht: nur dieser Hash.
+export async function inviteCodeHash(code) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`budgetplaner-einladung:${normalizeCode(code)}`));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Schluessel, mit dem der Budget-Schluessel in der Einladung verschluesselt ist.
+export function inviteCodeKey(code, salt) {
+  return deriveKey(normalizeCode(code), salt);
+}

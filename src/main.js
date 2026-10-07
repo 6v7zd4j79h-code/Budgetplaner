@@ -55,7 +55,7 @@ function renderBudgetSwitch() {
   brandName.hidden = several;
   budgetSelect.hidden = !several;
   if (several) {
-    budgetSelect.innerHTML = store.budgets.map((b) => `<option value="${b.id}" ${b.id === store.active ? 'selected' : ''}>${b.protected ? '🔒 ' : ''}${b.name.replace(/</g, '&lt;')}</option>`).join('');
+    budgetSelect.innerHTML = store.budgets.map((b) => `<option value="${b.id}" ${b.id === store.active ? 'selected' : ''}>${b.protected ? '🔒 ' : ''}${b.shared ? '👥 ' : ''}${b.name.replace(/</g, '&lt;')}</option>`).join('');
   }
   lockBtn.hidden = store.mode === 'vault' ? false : (!isProtected() || store.locked);
 }

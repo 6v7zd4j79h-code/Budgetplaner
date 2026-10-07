@@ -2,16 +2,20 @@
 //
 // - "local": alles liegt im localStorage dieses Geraets (wie bisher). Fuer
 //   Gerätewechsel gibt es die Sicherungsdatei.
-// - "vault": Abgleich zwischen Geraeten ueber Supabase (siehe cloud.js).
-//   Alle Budgets liegen zusammen in einem verschluesselten Tresor - auf dem
-//   Geraet und auf dem Server. Entschluesselt existieren sie nur im
-//   Arbeitsspeicher.
+// - "vault": Abgleich zwischen Geraeten ueber die Netlify-Funktion (siehe
+//   cloud.js). Alle Budgets liegen zusammen in einem verschluesselten Tresor -
+//   auf dem Geraet und auf dem Server. Entschluesselt existieren sie nur im
+//   Arbeitsspeicher. Ausnahme: gemeinsame Budgets (budget.shared) liegen auf
+//   dem Server in einem eigenen Bereich mit eigenem Schluessel, damit mehrere
+//   Personen darauf zugreifen koennen. Auf dem Geraet stecken sie mit im Tresor.
 //
 // Solange bei eingerichtetem Abgleich niemand angemeldet ist, steht die App
 // auf "signedout" und zeigt die Anmeldung.
 
 import { emptyData, validateData } from './budget.js';
-import { deriveKey, newSalt, seal, unseal } from './crypto.js';
+import {
+  deriveKey, importSpaceKey, inviteCodeHash, inviteCodeKey, newInviteCode, newSalt, newSpaceKey, seal, unseal,
+} from './crypto.js';
 import * as cloud from './cloud.js';
 
 // Passwortschutz im lokalen Modus: Ein geschuetztes Budget (protected: true)
@@ -50,9 +54,24 @@ export const store = {
 
 // --- Tresor (Betriebsart "vault") ----------------------------------------------
 
-let vault = null;     // { budgets, active, books: { id: data } }
+let vault = null;     // { budgets, active, books: { id: data }, spaceRevs: { id: rev } }
 let vaultKey = null;  // { key, salt }
 let vaultRev = 0;     // Stand auf dem Server, auf dem der Tresor beruht
+
+// Was noch hochgeladen werden muss: der private Tresor und/oder gemeinsame Budgets.
+const dirty = { vault: false, spaces: new Set() };
+const spaceKeys = new Map(); // Budget-ID -> CryptoKey des gemeinsamen Budgets
+
+const sharedBudgets = () => store.budgets.filter((b) => b.shared);
+
+async function spaceKey(budget) {
+  if (!spaceKeys.has(budget.id)) spaceKeys.set(budget.id, await importSpaceKey(budget.shared.key));
+  return spaceKeys.get(budget.id);
+}
+
+function markPending() {
+  store.cloud.pending = dirty.vault || dirty.spaces.size > 0;
+}
 
 function readCache() {
   try {
@@ -68,7 +87,9 @@ function useVault(content) {
     budgets: Array.isArray(content.budgets) && content.budgets.length ? content.budgets : defaultBudgets(),
     active: content.active,
     books: content.books || {},
+    spaceRevs: content.spaceRevs || {},
   };
+  spaceKeys.clear();
   store.mode = 'vault';
   store.budgets = vault.budgets;
   store.active = vault.budgets.some((b) => b.id === vault.active) ? vault.active : vault.budgets[0].id;
@@ -83,6 +104,15 @@ function vaultContent() {
   return vault;
 }
 
+// Was in den privaten Tresor auf dem Server gehoert: ohne die Inhalte der
+// gemeinsamen Budgets (die liegen in ihrem eigenen Bereich).
+function serverContent() {
+  const content = vaultContent();
+  const books = { ...content.books };
+  for (const b of sharedBudgets()) delete books[b.id];
+  return { budgets: content.budgets, active: content.active, books };
+}
+
 // Verschluesselt auf dem Geraet ablegen, dann (verzoegert) hochladen.
 async function persistVault() {
   if (!vault || !vaultKey) return;
@@ -93,7 +123,7 @@ async function persistVault() {
   } catch {
     store.saveFailed = true;
   }
-  store.cloud.pending = true;
+  markPending();
   schedulePush();
 }
 
@@ -108,20 +138,40 @@ async function push() {
   if (!vault || !vaultKey || !cloud.cloudConfigured) return;
   if (pushing) { schedulePush(); return; }
   pushing = (async () => {
+    // Merken, was hochgeladen wird - Aenderungen waehrenddessen setzen dirty neu.
+    const wasVault = dirty.vault;
+    const spaces = [...dirty.spaces];
     try {
-      const result = await cloud.storeVault(vaultKey, vaultContent(), vaultRev);
-      if (result.conflict) {
+      let conflict = false;
+      if (wasVault) {
+        dirty.vault = false;
+        const result = await cloud.storeVault(vaultKey, serverContent(), vaultRev);
+        if (result.conflict) conflict = true;
+        else vaultRev = result.rev;
+      }
+      for (const id of spaces) {
+        const budget = store.budgets.find((b) => b.id === id && b.shared);
+        dirty.spaces.delete(id);
+        if (!budget) continue;
+        const result = await cloud.storeSpace(budget.shared.space, await spaceKey(budget), vault.books[id] || emptyData(), vault.spaceRevs[id] || 0);
+        if (result.conflict) conflict = true;
+        else vault.spaceRevs[id] = result.rev;
+      }
+      if (conflict) {
         await pull({ force: true });
         store.cloud.notice = 'Auf einem anderen Gerät wurde inzwischen etwas geändert. Der neueste Stand ist geladen – bitte deine letzte Änderung prüfen.';
       } else {
-        vaultRev = result.rev;
-        store.cloud.pending = false;
         store.cloud.lastSync = new Date().toISOString();
         store.cloud.error = null;
-        await persistCacheOnly();
       }
+      markPending();
+      await persistCacheOnly();
     } catch (error) {
       store.cloud.error = error.message;
+      // Nicht hochgeladen - beim naechsten Mal nochmal versuchen.
+      if (wasVault) dirty.vault = true;
+      for (const id of spaces) dirty.spaces.add(id);
+      markPending();
     } finally {
       pushing = null;
       emit();
@@ -149,17 +199,49 @@ export async function pull({ force = false } = {}) {
     if (row && row.rev > vaultRev) {
       const content = await unseal(vaultKey.key, row);
       vaultRev = row.rev;
-      const active = store.active;
-      useVault({ ...content, active });
-      store.cloud.pending = false;
-      await persistCacheOnly();
+      // Gemeinsame Budgets, die es weiter gibt, behalten ihren Stand bis zum Abruf unten.
+      const books = { ...content.books };
+      const spaceRevs = {};
+      for (const b of content.budgets.filter((x) => x.shared)) {
+        const known = store.budgets.find((x) => x.id === b.id && x.shared?.space === b.shared.space);
+        if (known) { books[b.id] = vault.books[b.id]; spaceRevs[b.id] = vault.spaceRevs[b.id]; }
+      }
+      useVault({ ...content, books, spaceRevs, active: store.active });
+      dirty.vault = false;
     }
+    await pullSpaces(force);
+    markPending();
+    await persistCacheOnly();
     store.cloud.lastSync = new Date().toISOString();
     store.cloud.error = null;
   } catch (error) {
     store.cloud.error = error.message;
   }
   emit();
+}
+
+async function pullSpaces(force, only = null) {
+  for (const budget of sharedBudgets()) {
+    if (only && budget.id !== only) continue;
+    if (dirty.spaces.has(budget.id) && !force) continue;
+    let row;
+    try {
+      row = await cloud.fetchSpace(budget.shared.space);
+    } catch (error) {
+      if (error.status === 403 || error.status === 404) {
+        store.cloud.notice = `Das gemeinsame Budget „${budget.name}“ ist nicht mehr freigegeben.`;
+        continue;
+      }
+      throw error;
+    }
+    if (row.rev > (vault.spaceRevs[budget.id] || 0) || force) {
+      const book = await unseal(await spaceKey(budget), row);
+      vault.books[budget.id] = book;
+      vault.spaceRevs[budget.id] = row.rev;
+      dirty.spaces.delete(budget.id);
+      if (store.active === budget.id) store.data = book;
+    }
+  }
 }
 
 // Lokale Budgets beim ersten Anmelden in den Tresor uebernehmen.
@@ -213,6 +295,9 @@ export async function cloudSignIn(email, password, remember) {
       }
       vaultRev = row.rev;
       useVault(content);
+      dirty.vault = false;
+      dirty.spaces.clear();
+      await pullSpaces(true);
       await persistCacheOnly();
     } else {
       const salt = newSalt();
@@ -221,7 +306,7 @@ export async function cloudSignIn(email, password, remember) {
       const migrated = content.budgets.map((b) => b.id);
       vaultRev = 0;
       useVault(content);
-      const result = await cloud.storeVault(vaultKey, vaultContent(), 0);
+      const result = await cloud.storeVault(vaultKey, serverContent(), 0);
       if (result.conflict) return { error: 'Auf einem anderen Gerät wurde gerade ein Tresor angelegt. Bitte nochmal anmelden.' };
       vaultRev = result.rev;
       await persistCacheOnly();
@@ -251,6 +336,7 @@ export async function cloudUnlock(password, remember) {
   } catch {
     return { error: 'Das Passwort stimmt nicht.' };
   }
+  await cloud.resumeLogin(store.cloud.email, password);
   if (remember) await cloud.rememberKey({ ...vaultKey, email: store.cloud.email });
   emit();
   pull();
@@ -277,6 +363,9 @@ export async function cloudSignOut() {
   vault = null;
   vaultKey = null;
   vaultRev = 0;
+  dirty.vault = false;
+  dirty.spaces.clear();
+  spaceKeys.clear();
   store.cloud = { email: null, lastSync: null, pending: false, error: null, notice: null, busy: false };
   store.budgets = defaultBudgets();
   store.mode = 'signedout';
@@ -335,6 +424,74 @@ if (typeof window !== 'undefined') {
   window.addEventListener('online', () => pull());
 }
 
+// --- Gemeinsame Budgets --------------------------------------------------------
+// Ein Budget freigeben: Es bekommt einen eigenen Schluessel und einen eigenen
+// Bereich auf dem Server. Andere kommen ueber einen Einladungscode dazu.
+
+export function canShare(id = store.active) {
+  return store.mode === 'vault' && id !== MAIN_ID && !store.budgets.find((b) => b.id === id)?.shared;
+}
+
+export async function shareBudget(id) {
+  if (!canShare(id)) return { error: 'Dieses Budget lässt sich nicht freigeben.' };
+  const budget = store.budgets.find((b) => b.id === id);
+  await queue;
+  try {
+    const raw = await newSpaceKey();
+    const key = await importSpaceKey(raw);
+    const { space, rev } = await cloud.createSpace(key, vault.books[id] || emptyData());
+    budget.shared = { space, key: raw };
+    spaceKeys.set(id, key);
+    vault.spaceRevs[id] = rev;
+    writeBudgets();
+    await push();
+    emit();
+    return {};
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+// Einladungscode fuer ein gemeinsames Budget. Der Code selbst geht nie an den
+// Server - nur sein Hash und der damit verschluesselte Budget-Schluessel.
+export async function inviteToBudget(id) {
+  const budget = store.budgets.find((b) => b.id === id && b.shared);
+  if (!budget) return { error: 'Das Budget ist nicht freigegeben.' };
+  try {
+    const code = newInviteCode();
+    const salt = newSalt();
+    const sealed = await seal(await inviteCodeKey(code, salt), salt, { key: budget.shared.key, name: budget.name });
+    const { expires } = await cloud.createInvite(budget.shared.space, await inviteCodeHash(code), sealed);
+    return { code, expires };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+export async function joinBudget(code) {
+  if (store.mode !== 'vault') return { error: 'Bitte zuerst anmelden.' };
+  try {
+    const { space, sealed } = await cloud.acceptInvite(await inviteCodeHash(code));
+    let invite;
+    try {
+      invite = await unseal(await inviteCodeKey(code, sealed.salt), sealed);
+    } catch {
+      return { error: 'Der Code passt nicht. Bitte genau so eingeben, wie er angezeigt wurde.' };
+    }
+    const existing = store.budgets.find((b) => b.shared?.space === space);
+    if (existing) { await switchBudget(existing.id); return { id: existing.id }; }
+    const id = uniqueBudgetId(invite.name);
+    store.budgets.push({ id, name: invite.name, shared: { space, key: invite.key } });
+    vault.books[id] = emptyData();
+    vault.spaceRevs[id] = 0;
+    await pullSpaces(true, id);
+    await switchBudget(id);
+    return { id };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
 // --- Budgets -----------------------------------------------------------------
 
 function readBudgets() {
@@ -352,7 +509,7 @@ function readBudgets() {
 }
 
 function writeBudgets() {
-  if (store.mode === 'vault') { persistVault(); return; }
+  if (store.mode === 'vault') { dirty.vault = true; persistVault(); return; }
   try {
     localStorage.setItem(STORAGE_BUDGETS, JSON.stringify({ list: store.budgets, active: store.active }));
   } catch {
@@ -466,10 +623,15 @@ export async function removePassword() {
   emit();
 }
 
-export function createBudget(name) {
+function uniqueBudgetId(name) {
   const base = name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'budget';
   let id = base;
   for (let n = 2; store.budgets.some((b) => b.id === id) || id === MAIN_ID; n += 1) id = `${base}-${n}`;
+  return id;
+}
+
+export function createBudget(name) {
+  const id = uniqueBudgetId(name);
   store.budgets.push({ id, name });
   switchBudget(id);
   return id;
@@ -487,6 +649,13 @@ export function deleteBudget(id) {
   if (id === MAIN_ID) return;
   keys.delete(id);
   if (store.mode === 'vault') {
+    const budget = store.budgets.find((b) => b.id === id);
+    if (budget?.shared) {
+      cloud.leaveSpace(budget.shared.space).catch(() => {});
+      delete vault.spaceRevs[id];
+      dirty.spaces.delete(id);
+      spaceKeys.delete(id);
+    }
     delete vault.books[id];
   } else {
     try {
@@ -533,6 +702,8 @@ let queue = Promise.resolve();
 function save() {
   if (store.mode === 'vault') {
     vault.books[store.active] = store.data;
+    if (activeBudget()?.shared) dirty.spaces.add(store.active);
+    else dirty.vault = true;
     queue = queue.then(persistVault);
     return queue;
   }

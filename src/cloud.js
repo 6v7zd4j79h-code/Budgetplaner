@@ -1,33 +1,70 @@
-// Abgleich zwischen Geraeten ueber Supabase - Ende-zu-Ende-verschluesselt.
+// Abgleich zwischen Geraeten ueber die eigene Netlify-Funktion
+// (netlify/functions/vault.mjs, Logik in server/vault-core.js) -
+// Ende-zu-Ende-verschluesselt.
 //
-// Pro Person liegt in der Tabelle "vaults" genau eine Zeile: der Tresor mit
-// allen Budgets, im Browser verschluesselt (siehe crypto.js). Aus dem
-// Passwort entstehen zwei getrennte Werte:
-//   - ein Login-Wert fuer Supabase (deriveLoginSecret)
-//   - der Datenschluessel (deriveKey mit dem Salt aus der Zeile)
-// Supabase kennt also weder Passwort noch Schluessel.
+// Pro Person gibt es einen privaten Tresor mit allen Budgets, im Browser
+// verschluesselt (siehe crypto.js). Aus dem Passwort entstehen zwei
+// getrennte Werte:
+//   - ein Login-Wert fuer den Server (deriveLoginSecret)
+//   - der Datenschluessel (deriveKey mit dem Salt des Tresors)
+// Der Server kennt also weder Passwort noch Schluessel.
 //
-// Fehlen VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY, gibt es keinen Abgleich
-// und die App laeuft wie bisher nur auf dem Geraet.
+// Gemeinsame Budgets (z. B. Gemeinschaftskonto) liegen in einem eigenen
+// Bereich mit eigenem Schluessel; den Schluessel tragen alle Mitglieder in
+// ihrem privaten Tresor.
+//
+// Mit VITE_ABGLEICH=aus beim Build laeuft die App wie frueher nur auf dem Geraet.
 
-import { createClient } from '@supabase/supabase-js';
 import { deriveKey, deriveLoginSecret, newSalt, seal, unseal } from './crypto.js';
 
-const url = import.meta.env?.VITE_SUPABASE_URL;
-const anonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY;
+const ENDPOINT = '/.netlify/functions/vault';
 
-export let cloudConfigured = Boolean(url && anonKey);
-let supabase = cloudConfigured ? createClient(url, anonKey) : null;
+const inBrowser = typeof window !== 'undefined' && typeof fetch === 'function';
+export let cloudConfigured = inBrowser && import.meta.env?.VITE_ABGLEICH !== 'aus';
 
-// Nur fuer Tests: einen nachgebauten Server einsetzen.
-export function useClientForTests(client) {
-  supabase = client;
-  cloudConfigured = Boolean(client);
+// Wie Anfragen den Server erreichen. Tests setzen hier einen Server im Speicher ein.
+let send = async (body) => {
+  let response;
+  try {
+    response = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
+  } catch {
+    throw new Error('Keine Verbindung zum Server.');
+  }
+  let json = {};
+  try { json = await response.json(); } catch { /* leer */ }
+  return { status: response.status, body: json };
+};
+
+export function useServerForTests(handler) {
+  send = handler;
+  cloudConfigured = Boolean(handler);
+}
+
+// Angemeldet = E-Mail und Login-Wert im Arbeitsspeicher. Jede Anfrage
+// weist sich damit aus; Sitzungen auf dem Server gibt es nicht.
+let auth = null;
+
+async function call(action, payload = {}, { anonymous = false } = {}) {
+  if (!anonymous && !auth) throw new Error('Nicht angemeldet.');
+  const { status, body } = await send({ action, ...(anonymous ? {} : auth), ...payload });
+  if (status === 409 && body.conflict) return { conflict: true };
+  if (status >= 400) {
+    const error = new Error(body.error || 'Das hat nicht geklappt.');
+    error.status = status;
+    throw error;
+  }
+  return body;
 }
 
 // --- "Auf diesem Geraet angemeldet bleiben" -----------------------------------
 // Der Schluessel ist nicht exportierbar: Er laesst sich zum Ver- und
-// Entschluesseln benutzen, aber nicht auslesen. Er liegt in IndexedDB.
+// Entschluesseln benutzen, aber nicht auslesen. Er liegt in IndexedDB,
+// zusammen mit dem Login-Wert fuer den Server.
 
 const DB = 'budgetplaner';
 const STORE = 'keys';
@@ -52,11 +89,18 @@ async function idbDo(mode, fn) {
 }
 
 export async function rememberKey(entry) {
-  try { await idbDo('readwrite', (s) => s.put(entry, 'vault')); } catch { /* ohne IndexedDB eben nicht */ }
+  try { await idbDo('readwrite', (s) => s.put({ ...entry, secret: auth?.secret || null }, 'vault')); } catch { /* ohne IndexedDB eben nicht */ }
 }
 
+// Gibt den gemerkten Eintrag zurueck und meldet damit beim Server an.
 export async function rememberedKey() {
-  try { return (await idbDo('readonly', (s) => s.get('vault'))) || null; } catch { return null; }
+  try {
+    const entry = (await idbDo('readonly', (s) => s.get('vault'))) || null;
+    if (entry?.email && entry.secret) auth = { email: entry.email, secret: entry.secret };
+    return entry;
+  } catch {
+    return null;
+  }
 }
 
 export async function forgetKey() {
@@ -66,53 +110,51 @@ export async function forgetKey() {
 // --- Anmeldung ----------------------------------------------------------------
 
 function friendly(error) {
-  const text = String(error?.message || error || '');
-  if (/Invalid login credentials/i.test(text)) return 'E-Mail oder Passwort stimmt nicht.';
-  if (/Email not confirmed/i.test(text)) return 'Bitte zuerst die E-Mail bestätigen – der Link kam per Mail.';
-  if (/already registered|already been registered/i.test(text)) return 'Für diese E-Mail gibt es schon ein Konto. Bitte anmelden.';
-  if (/rate limit/i.test(text)) return 'Zu viele Versuche. Bitte kurz warten.';
-  if (/fetch|network/i.test(text)) return 'Keine Verbindung zum Server.';
-  return text || 'Das hat nicht geklappt.';
+  return { error: error.message || 'Das hat nicht geklappt.' };
 }
 
+// Ohne Bestaetigungs-Mail: Das Konto ist sofort nutzbar.
 export async function signUp(email, password) {
-  const secret = await deriveLoginSecret(password, email);
-  const { data, error } = await supabase.auth.signUp({ email: email.trim(), password: secret });
-  if (error) return { error: friendly(error) };
-  return { needsConfirmation: !data.session };
+  try {
+    const secret = await deriveLoginSecret(password, email);
+    await call('signup', { email: email.trim(), secret }, { anonymous: true });
+    return { needsConfirmation: false };
+  } catch (error) {
+    return friendly(error);
+  }
 }
 
 export async function signIn(email, password) {
-  const secret = await deriveLoginSecret(password, email);
-  const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: secret });
-  return error ? { error: friendly(error) } : {};
+  try {
+    const candidate = { email: email.trim(), secret: await deriveLoginSecret(password, email) };
+    await call('check', candidate, { anonymous: true });
+    auth = candidate;
+    return {};
+  } catch (error) {
+    return friendly(error);
+  }
+}
+
+// Offline entsperrt: Login-Wert trotzdem bereitlegen, damit der Abgleich
+// spaeter ohne erneute Eingabe klappt.
+export async function resumeLogin(email, password) {
+  if (email) auth = { email: email.trim(), secret: await deriveLoginSecret(password, email) };
 }
 
 export async function signOut() {
   await forgetKey();
-  if (supabase) await supabase.auth.signOut().catch(() => {});
+  auth = null;
 }
 
-export async function currentEmail() {
-  if (!supabase) return null;
-  const { data } = await supabase.auth.getSession();
-  return data.session?.user?.email || null;
+export function currentEmail() {
+  return auth?.email || null;
 }
 
-// --- Tresor -------------------------------------------------------------------
+// --- Privater Tresor ----------------------------------------------------------
 
-async function userId() {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.user?.id || null;
-}
-
-// Liest die Zeile vom Server: { salt, iv, data, rev } oder null.
+// Liest den Tresor vom Server: { salt, iv, data, rev } oder null.
 export async function fetchVault() {
-  const uid = await userId();
-  if (!uid) throw new Error('Nicht angemeldet.');
-  const { data, error } = await supabase.from('vaults').select('salt, iv, data, rev').eq('user_id', uid).maybeSingle();
-  if (error) throw new Error(friendly(error));
-  return data;
+  return (await call('vault-get')).row;
 }
 
 // Schluessel fuer den Tresor. Gibt es noch keinen, wird ein neues Salt erzeugt.
@@ -129,23 +171,36 @@ export async function openVault(key, row) {
 // Ergebnis: { rev } bei Erfolg, { conflict: true } wenn ein anderes Geraet
 // inzwischen gespeichert hat.
 export async function storeVault({ key, salt }, content, rev) {
-  const uid = await userId();
-  if (!uid) throw new Error('Nicht angemeldet.');
-  const sealed = await seal(key, salt, content);
-  const row = { salt, iv: sealed.iv, data: sealed.data, updated_at: new Date().toISOString() };
-  if (!rev) {
-    const { error } = await supabase.from('vaults').insert({ ...row, user_id: uid, rev: 1 });
-    if (error) {
-      if (/duplicate|conflict/i.test(error.message)) return { conflict: true };
-      throw new Error(friendly(error));
-    }
-    return { rev: 1 };
-  }
-  const { data, error } = await supabase.from('vaults')
-    .update({ ...row, rev: rev + 1 }).eq('user_id', uid).eq('rev', rev).select('rev');
-  if (error) throw new Error(friendly(error));
-  if (!data.length) return { conflict: true };
-  return { rev: data[0].rev };
+  const row = await seal(key, salt, content);
+  return call('vault-put', { row, rev: rev || 0 });
+}
+
+// --- Gemeinsame Budgets -------------------------------------------------------
+
+export async function createSpace(key, book) {
+  const { iv, data } = await seal(key, '', book);
+  return call('space-create', { row: { iv, data } });
+}
+
+export async function fetchSpace(space) {
+  return (await call('space-get', { space })).row;
+}
+
+export async function storeSpace(space, key, book, rev) {
+  const { iv, data } = await seal(key, '', book);
+  return call('space-put', { space, row: { iv, data }, rev });
+}
+
+export async function leaveSpace(space) {
+  return call('space-leave', { space });
+}
+
+export async function createInvite(space, codeHash, sealed) {
+  return call('invite-create', { space, code: codeHash, sealed });
+}
+
+export async function acceptInvite(codeHash) {
+  return call('invite-accept', { code: codeHash });
 }
 
 export { seal, unseal };

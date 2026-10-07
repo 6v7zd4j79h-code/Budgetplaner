@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { handle, memoryStore } from './server/vault-core.js';
 
 // Startfarbe der App: VITE_FARBE=blau oder grau (z. B. als Netlify-
 // Umgebungsvariable) liefert die Farbe samt passendem App-Icon, ohne Angabe
@@ -13,8 +14,33 @@ const FARBEN = {
 const farbe = FARBEN[process.env.VITE_FARBE] || FARBEN.pflaume;
 const { iconDir, themeColor } = farbe;
 
+// Beim Entwickeln (npm run dev) beantwortet Vite die Anfragen an die
+// Netlify-Funktion selbst - mit einer Ablage im Arbeitsspeicher, die beim
+// Neustart leer ist. Online uebernimmt das netlify/functions/vault.mjs.
+function abgleichImDev() {
+  const store = memoryStore();
+  return {
+    name: 'abgleich-im-dev',
+    configureServer(server) {
+      server.middlewares.use('/.netlify/functions/vault', (req, res) => {
+        let text = '';
+        req.on('data', (chunk) => { text += chunk; });
+        req.on('end', async () => {
+          let body = null;
+          try { body = JSON.parse(text); } catch { /* bleibt null */ }
+          const result = await handle(store, body);
+          res.statusCode = result.status;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(result.body));
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
+    abgleichImDev(),
     {
       // Statusleistenfarbe und Home-Bildschirm-Icon passend zur Startfarbe.
       name: 'farbe-im-html',

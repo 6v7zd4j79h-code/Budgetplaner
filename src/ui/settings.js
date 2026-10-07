@@ -5,7 +5,7 @@
 // wenn die letzte Sicherung lange her ist.
 
 import {
-  activeBudget, cloudAvailable, cloudSignOut, createBudget, deleteBudget, exportJson, importJson, isProtected,
+  activeBudget, canShare, cloudAvailable, cloudSignOut, createBudget, inviteToBudget, joinBudget, shareBudget, deleteBudget, exportJson, importJson, isProtected,
   lastBackupAt, lock, pull, removePassword, renameBudget, resetAll, setPassword, showSignIn, store,
 } from '../store.js';
 import { todayISO, formatDay } from '../dates.js';
@@ -83,6 +83,41 @@ function accountCard() {
   </article>`;
 }
 
+// Gemeinsame Budgets: freigeben, Einladungscode erzeugen, mit Code beitreten.
+let invite = null;      // { id, code, expires } - nur bis zum Neuladen sichtbar
+let shareMessage = null; // { ok, text }
+
+function shareCard(current) {
+  if (store.mode !== 'vault') return '';
+  const info = shareMessage ? `<p class="${shareMessage.ok ? 'notice-ok' : 'form-error'}" role="alert">${esc(shareMessage.text)}</p>` : '';
+  let body;
+  if (current.shared) {
+    const shown = invite && invite.id === current.id;
+    body = `<p>„${esc(current.name)}“ ist <strong>gemeinsam</strong>: Alle Eingeladenen sehen und ändern dieselben Daten. Deine anderen Budgets bleiben privat.</p>
+      ${shown ? `<div class="invite-code">
+          <p class="muted small">Einladungscode – gilt einmal und bis ${esc(formatDay(invite.expires.slice(0, 10)))}:</p>
+          <p class="code" aria-label="Einladungscode">${esc(invite.code)}</p>
+          <p class="hint">Die andere Person meldet sich mit ihrem eigenen Konto an und gibt den Code hier unter „Mit Code beitreten“ ein. Den Code am besten mündlich oder per Nachricht weitergeben – wer ihn hat, kommt an dieses Budget.</p>
+        </div>` : ''}
+      <div class="btn-row"><button type="button" class="btn${shown ? '' : ' primary'}" data-action="share-invite" data-key="${esc(current.id)}">${shown ? 'Neuen Code erzeugen' : 'Jemanden einladen'}</button></div>`;
+  } else if (canShare(current.id)) {
+    body = `<p>„${esc(current.name)}“ ist privat. Freigeben, z. B. fürs Gemeinschaftskonto: Dann können andere mit eigenem Konto per Einladungscode dazukommen.</p>
+      <div class="btn-row"><button type="button" class="btn primary" data-action="share-budget" data-key="${esc(current.id)}">„${esc(current.name)}“ freigeben</button></div>`;
+  } else {
+    body = `<p class="muted">„${esc(current.name)}“ bleibt immer privat. Für ein gemeinsames Budget oben ein eigenes Budget anlegen oder auswählen und dann freigeben.</p>`;
+  }
+  return `<article class="card">
+    <h2>Gemeinsam nutzen</h2>
+    ${body}
+    <p class="hint share-join-label">Von jemandem eingeladen? Code hier eingeben:</p>
+    <form class="budget-add" data-action="share-join" autocomplete="off">
+      <input type="text" name="code" placeholder="Einladungscode" aria-label="Einladungscode" autocapitalize="characters" spellcheck="false" required>
+      <button type="submit" class="btn">Mit Code beitreten</button>
+    </form>
+    ${info}
+  </article>`;
+}
+
 export function render() {
   const last = lastBackupAt();
   const active = currentPalette();
@@ -97,7 +132,7 @@ export function render() {
     <p class="hint">Getrennte Budgets, z. B. für dein Konto und das Gemeinschaftskonto. Jedes hat eigene Monate, Ausgaben, Abos und Sparziele. Umschalten oben im Kopf.</p>
     <ul class="budget-list">${store.budgets.map((b) => `
       <li class="budget-row${b.id === store.active ? ' active' : ''}">
-        <input type="text" data-action="budget-rename" data-key="${esc(b.id)}" value="${esc(b.name)}" aria-label="Name des Budgets">
+        <span class="budget-name"><input type="text" data-action="budget-rename" data-key="${esc(b.id)}" value="${esc(b.name)}" aria-label="Name des Budgets">${b.shared ? '<span class="shared-mark" title="gemeinsam" aria-label="gemeinsam">👥</span>' : ''}</span>
         ${b.id === store.active ? '<span class="pill">aktiv</span>' : `<button type="button" class="btn" data-action="budget-switch" data-key="${esc(b.id)}">Öffnen</button>`}
         ${b.id === 'privat' ? '<span></span>' : `<button type="button" class="del" data-action="budget-delete" data-key="${esc(b.id)}" aria-label="${esc(b.name)} löschen" title="Budget löschen">×</button>`}
       </li>`).join('')}</ul>
@@ -106,6 +141,8 @@ export function render() {
       <button type="submit" class="btn">+ Neues Budget</button>
     </form>
   </article>
+
+  ${shareCard(current)}
 
   <article class="card">
     <h2>Farbe</h2>
@@ -120,9 +157,12 @@ export function render() {
 
   <article class="card">
     <h2>Sicherung${store.budgets.length > 1 ? ` · ${esc(current.name)}` : ''}</h2>
-    <p>Alle Daten liegen <strong>nur auf diesem Gerät</strong>. Nichts wird ins Internet geschickt.
+    ${store.mode === 'vault'
+    ? `<p>Deine Budgets liegen verschlüsselt auf deinen Geräten und auf dem Server. Eine Sicherungsdatei ist trotzdem
+      gut für den Notfall. Sie ist mit deinem Passwort verschlüsselt und lässt sich nur in deinem Konto wiederherstellen.</p>`
+    : `<p>Alle Daten liegen <strong>nur auf diesem Gerät</strong>. Nichts wird ins Internet geschickt.
       Damit nichts verloren geht, wenn das Gerät kaputtgeht oder die Browserdaten gelöscht werden,
-      speichere ab und zu eine Sicherungsdatei – z. B. in iCloud, Google Drive oder per Mail an dich selbst.</p>
+      speichere ab und zu eine Sicherungsdatei – z. B. in iCloud, Google Drive oder per Mail an dich selbst.</p>`}
     <p class="${backupOverdue() ? 'warn' : 'muted'}">Letzte Sicherung: ${last ? esc(formatDay(last.slice(0, 10))) : 'noch keine'}</p>
     <div class="btn-row">
       <button type="button" class="btn primary" data-action="export">Sicherung speichern</button>
@@ -159,9 +199,35 @@ export const actions = {
   'budget-delete'(el) {
     const budget = store.budgets.find((b) => b.id === el.dataset.key);
     if (!budget) return;
+    if (budget.shared) {
+      if (!window.confirm(`Gemeinsames Budget „${budget.name}“ verlassen? Es verschwindet bei dir; die anderen behalten es. Bist du die letzte Person, wird es gelöscht.`)) return;
+      deleteBudget(budget.id);
+      return;
+    }
     if (!window.confirm(`Budget „${budget.name}“ mit allen Daten löschen?`)) return;
     if (!window.confirm('Ganz sicher? Ohne Sicherungsdatei ist das endgültig.')) return;
     deleteBudget(budget.id);
+  },
+  async 'share-budget'(el, _event, ctx) {
+    el.disabled = true;
+    const result = await shareBudget(el.dataset.key);
+    shareMessage = result.error ? { text: result.error } : { ok: true, text: 'Freigegeben. Jetzt kannst du jemanden einladen.' };
+    ctx.rerender();
+  },
+  async 'share-invite'(el, _event, ctx) {
+    el.disabled = true;
+    const result = await inviteToBudget(el.dataset.key);
+    if (result.error) shareMessage = { text: result.error };
+    else { invite = { id: el.dataset.key, ...result }; shareMessage = null; }
+    ctx.rerender();
+  },
+  async 'share-join'(form, event, ctx) {
+    event.preventDefault();
+    const button = form.querySelector('button');
+    button.disabled = true;
+    const result = await joinBudget(form.elements.code.value);
+    shareMessage = result.error ? { text: result.error } : { ok: true, text: `Beigetreten: „${activeBudget().name}“ ist jetzt auch bei dir.` };
+    ctx.rerender();
   },
   palette(el, _event, ctx) {
     setPalette(el.dataset.key);

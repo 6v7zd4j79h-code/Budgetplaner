@@ -66,9 +66,12 @@ Am 06./07.10. am Mac (lokal committet, auf Branch `arbeitsstand` gesichert,
   einem verschlüsselten Tresor, Abgleich beim Öffnen/Zurückkehren/nach
   Änderungen, Konflikt = neuerer Server-Stand gewinnt mit Hinweis,
   „angemeldet bleiben“ über nicht exportierbaren Schlüssel in IndexedDB.
-  Derzeit an **Supabase** angebunden (`supabase/schema.sql`,
-  `docs/supabase-einrichten.md`) – Entscheidung: soll auf **Neon** (über eine
-  Netlify-Funktion) umgestellt werden, siehe „Als Nächstes“.
+  Seit 07.10. über eine eigene **Netlify-Funktion + Netlify Blobs** statt
+  Supabase/Neon (kein weiteres Konto nötig, siehe `docs/abgleich.md`).
+- **Gemeinsame Budgets** (07.10.): Budget freigeben, Einladungscode (einmalig,
+  7 Tage), andere Person tritt mit eigenem Konto bei. Eigener Schlüssel pro
+  gemeinsamem Budget, liegt in den Tresoren aller Mitglieder; der Server sieht
+  den Code nur als Hash. Im Browser mit zwei „Geräten“ durchgespielt.
 - Neutrale Vorgabe „Mein Budget“ statt persönlicher Namen (Seite ist öffentlich).
 - **Kredite** als eigene Karte (Konten mit `kind: 'loan'`): Restschuld, Rate,
   Ende, wer zahlt, Tilgungsfortschritt; zählen nicht zu den Kontoständen.
@@ -96,12 +99,9 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
 
-1. **Abgleich auf Neon umstellen** (Entscheidung vom 06.10.): Neon-Konto
-   anlegen (macht Mareike), Projekt „budgetplaner“ Region Frankfurt,
-   Connection String als `DATABASE_URL` bei Netlify. Dann Supabase-Teil durch
-   Netlify-Funktion + Neon ersetzen. Drei Bereiche: Mareike (privat),
-   Klas (privat), Gemeinschaftskonto (Schlüssel liegt in beiden Tresoren,
-   Einladung per Code).
+1. ~~Abgleich auf Neon umstellen~~ erledigt am 07.10. – stattdessen Netlify
+   Blobs (Entscheidung Mareike: kein weiteres Konto). Drei Bereiche umgesetzt:
+   Mareike privat, Klas privat, Gemeinschaftskonto per Einladungscode.
 2. **Deploy** der Commits auf `arbeitsstand` erst nach Mareikes Anweisung
    (Branch dann nach `main` übernehmen).
 3. Importdateien (Sept + Okt, beide Budgets) einspielen, danach die
