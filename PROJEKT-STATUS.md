@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-05 (Mac: Passwortschutz; PC: CSV-Import, Kassenbon, mehrere Budgets)
+**Letzte Sitzung:** 2026-10-05 bis 07 (Mac: Konten, Dispo, Kredite, verschlüsselter Abgleich – noch nicht deployt)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -13,8 +13,10 @@ Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
 Sparziele, Abo-Tracker).
 
 Entscheidungen:
-- **Nur ein Gerät, keine Datenbank.** Alles liegt im localStorage, gesichert
-  wird per Sicherungsdatei. Kein Login, keine Zugangsdaten nötig.
+- Ursprünglich: **nur ein Gerät, keine Datenbank** (localStorage +
+  Sicherungsdatei). Am 06.10. erweitert: optionaler **verschlüsselter
+  Abgleich zwischen Geräten** (Ende-zu-Ende, der Server sieht nie Klartext
+  oder Passwort). Ohne Server-Konfiguration läuft die App weiter nur lokal.
 - Gleicher Technik-Stapel wie beim Sternenplan: Vite, reines JavaScript, PWA.
 
 Erledigt:
@@ -37,7 +39,7 @@ Am 05.10. am Mac ergänzt (parallel zur PC-Sitzung, auf deren Stand aufgebaut):
   im Speicher (AES-GCM, Schlüssel per PBKDF2 aus dem Passwort), auch die
   Sicherungsdatei ist dann verschlüsselt. Sperrt beim Budgetwechsel und beim
   Neuladen, Schloss-Knopf im Kopf. Vergessenes Passwort = Daten weg.
-- Standard-Budgets für neue Geräte: „Mareike“ und „Gemeinschaftskonto“.
+- Standard-Budgets für neue Geräte: am 06.10. ersetzt durch neutral „Mein Budget“.
 - Kein Formular schickt mehr an eine Adresse (Passwort nie in der URL).
 - Septemberdaten (beide Budgets) als Importdateien erzeugt – liegen bewusst
   NICHT im Repo, sondern unter `~/Budgetplan-Sicherungen` auf dem Mac.
@@ -55,6 +57,25 @@ Am 05.10. am Mac, zweiter Teil:
 - Umsätze wurden einmalig mit Mareike gemeinsam aus dem Online-Banking
   gelesen (sie meldet sich selbst an). Importdateien liegen nur auf dem Mac
   unter `~/Budgetplan-Sicherungen`.
+
+Am 06./07.10. am Mac (lokal committet, auf Branch `arbeitsstand` gesichert,
+**nicht deployt**):
+- **Verschlüsselter Abgleich** (`src/cloud.js`, Tresor-Modus in `store.js`,
+  Anmeldeseite `src/ui/account.js`): E-Mail + Passwort; aus dem Passwort
+  entstehen getrennt ein Login-Wert und der Datenschlüssel. Alle Budgets in
+  einem verschlüsselten Tresor, Abgleich beim Öffnen/Zurückkehren/nach
+  Änderungen, Konflikt = neuerer Server-Stand gewinnt mit Hinweis,
+  „angemeldet bleiben“ über nicht exportierbaren Schlüssel in IndexedDB.
+  Derzeit an **Supabase** angebunden (`supabase/schema.sql`,
+  `docs/supabase-einrichten.md`) – Entscheidung: soll auf **Neon** (über eine
+  Netlify-Funktion) umgestellt werden, siehe „Als Nächstes“.
+- Neutrale Vorgabe „Mein Budget“ statt persönlicher Namen (Seite ist öffentlich).
+- **Kredite** als eigene Karte (Konten mit `kind: 'loan'`): Restschuld, Rate,
+  Ende, wer zahlt, Tilgungsfortschritt; zählen nicht zu den Kontoständen.
+- Tests nutzen nur noch erfundene Beträge (vorher standen echte Kontowerte in
+  `tests/accounts.test.js` – in zwei älteren, schon gepushten Commits noch in
+  der Historie).
+- 60 Tests, darunter Abgleich mit nachgebautem Server.
 
 Am 05.10. ergänzt (Wunsch: sehen, wo Geld für Unnötiges hingeht):
 - **Kontoauszug einlesen** (CSV, nur im Browser): Sparkasse, Commerzbank,
@@ -75,13 +96,24 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
 
-1. ~~Repository auf GitHub anlegen und den Code hochladen~~ erledigt am 03.10.:
-   https://github.com/6v7zd4j79h-code/Budgetplaner (privat, Branch `main`)
+1. **Abgleich auf Neon umstellen** (Entscheidung vom 06.10.): Neon-Konto
+   anlegen (macht Mareike), Projekt „budgetplaner“ Region Frankfurt,
+   Connection String als `DATABASE_URL` bei Netlify. Dann Supabase-Teil durch
+   Netlify-Funktion + Neon ersetzen. Drei Bereiche: Mareike (privat),
+   Klas (privat), Gemeinschaftskonto (Schlüssel liegt in beiden Tresoren,
+   Einladung per Code).
+2. **Deploy** der Commits auf `arbeitsstand` erst nach Mareikes Anweisung
+   (Branch dann nach `main` übernehmen).
+3. Importdateien (Sept + Okt, beide Budgets) einspielen, danach die
+   unverschlüsselten `.json` in `~/Budgetplan-Sicherungen` löschen.
+4. Datenschutz: Repo auf **privat** stellen (GitHub → Settings) oder Historie
+   bereinigen – Mareike entscheidet.
+- ~~Repository auf GitHub anlegen und den Code hochladen~~ erledigt am 03.10.:
+   https://github.com/6v7zd4j79h-code/Budgetplaner (**öffentlich**, Branch `main`)
 2. ~~Bei Netlify verbinden~~ erledigt am 05.10.:
    **https://budget-kompass.netlify.app** (Pflaume, keine Umgebungsvariablen).
    Für eine zweite, blaue Seite `VITE_FARBE=blau` setzen.
-3. Auf dem Handy zum Home-Bildschirm hinzufügen
-4. Echte Beträge eintragen und gleich die erste Sicherung speichern
+- Auf dem Handy zum Home-Bildschirm hinzufügen
 
 ## Offene Punkte / Hinweise
 
@@ -94,6 +126,14 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
   ZIP in `~/Budgetplan-Sicherungen` ab (interne Sicherung, die 20 neuesten
   bleiben).
 
+- **Netlify Personal-Tarif** (1.000 Credits/Monat); ein Deploy kostet 15
+  Credits → Änderungen sammeln, selten deployen.
+- Seite **budget-kompass.netlify.app ist seit 06.10. öffentlich** (Team-Schutz
+  von Mareike aufgehoben). Unkritisch, solange Daten nur im Browser bzw.
+  verschlüsselt liegen.
+- **Unfertige Commits liegen auf Branch `arbeitsstand`**, nicht auf `main`
+  (`/shutdown` pusht dorthin, damit nichts ungewollt deployt wird).
+  `/start` muss diesen Branch berücksichtigen.
 - **Daten hängen an Gerät und Adresse.** Browserdaten löschen = Daten weg,
   wenn keine Sicherung existiert. Die App erinnert nach 30 Tagen.
 - Budget-Änderungen gelten nur für den angezeigten Monat. Spätere, schon
