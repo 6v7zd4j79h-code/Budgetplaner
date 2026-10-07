@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-05 (Mac: Passwortschutz; PC: CSV-Import, Kassenbon, mehrere Budgets)
+**Letzte Sitzung:** 2026-10-07 (Cloud: graue Variante, Fehlerkorrektur „Öffnen“; davor 05.10. Mac: Passwortschutz, Konten; Cloud: CSV-Import, Kassenbon, mehrere Budgets)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -29,8 +29,8 @@ Erledigt:
 
 Farben: zuerst Blau, dann auf Wunsch **Pflaume/Rosé** als Standard, dazu eine
 **blaue Variante** („Männer-Version“) und eine **graue im Büro-Stil** (eckiger, ohne Schatten). Umschaltbar in der App unter „Sicherung“
-(gilt pro Gerät). Mit `VITE_FARBE=blau` beim Build startet die App blau,
-inklusive blauem Icon und blauer Statusleiste.
+(gilt pro Gerät). Mit `VITE_FARBE=blau` bzw. `VITE_FARBE=grau` beim Build
+startet die App in dieser Farbe, inklusive passendem Icon und Statusleiste.
 
 Am 05.10. am Mac ergänzt (parallel zur PC-Sitzung, auf deren Stand aufgebaut):
 - **Passwortschutz pro Budget.** Geschützte Budgets liegen nur verschlüsselt
@@ -71,6 +71,16 @@ Am 05.10. ergänzt (Wunsch: sehen, wo Geld für Unnötiges hingeht):
   Auszüge dort ausgewertet werden sollen (Weg B).
 - 44 Tests; Import, Bon-Scan (mit echtem Bild), Budgets im Browser geprüft.
 
+Am 07.10. (Cloud-Sitzung):
+- **Graue Farbvariante im Büro-Stil** (neutrales Grau, Schiefer-Akzent,
+  Radien 3–4 px, keine Schatten, Strich oben an jeder Karte; hell und dunkel;
+  graues App-Icon unter `public/icons-grau`).
+- Stand vom Mac (Passwortschutz, Konten, Dispo) übernommen, ohne Konflikte.
+- **Fehler behoben:** Knopf „Öffnen“ unter Sicherung → Budgets stürzte ab
+  (`switchBudget` war in `src/ui/settings.js` nicht importiert). Im Browser
+  geprüft. Umschalten im Kopf war nicht betroffen.
+- 54 Tests grün, Build läuft.
+
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
@@ -81,7 +91,15 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
    **https://budget-kompass.netlify.app** (Pflaume, keine Umgebungsvariablen).
    Für eine zweite, blaue Seite `VITE_FARBE=blau` setzen.
 3. Auf dem Handy zum Home-Bildschirm hinzufügen
-4. Echte Beträge eintragen und gleich die erste Sicherung speichern
+4. Echte Beträge eintragen (oder Septemberdateien vom Mac einspielen) und
+   gleich die erste Sicherung speichern
+5. **Rückmeldung von Mareike abwarten:** Wird die Pflaumen-Version auf
+   budget-kompass.netlify.app angezeigt? (Am 05.10. gemeldet: „nicht da“ –
+   Ursache unklar, Vermutung: `VITE_FARBE` bei Netlify gesetzt oder alte
+   Version im Cache. Screenshot erbeten.)
+6. CSV-Import mit echten Auszügen ausprobieren; bei unbekannter Bank nur die
+   Kopfzeile (Spaltennamen) schicken lassen, nie den Inhalt
+7. Bon-Scan mit echtem Handyfoto ausprobieren
 
 ## Offene Punkte / Hinweise
 
@@ -98,6 +116,11 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
   wenn keine Sicherung existiert. Die App erinnert nach 30 Tagen.
 - Budget-Änderungen gelten nur für den angezeigten Monat. Spätere, schon
   angelegte Monate ändern sich nicht mit.
+- **Ungetestet mit echten Daten:** CSV-Import (nur erfundene Dateien im
+  Bankformat getestet; PayQuicker-Format unbekannt) und Bon-Scan (nur mit
+  erzeugtem Bon-Bild, echte Thermopapier-Fotos werden schlechter erkannt).
+- Die Texterkennung (ca. 12 MB in `public/ocr`) wird beim Build aus
+  `node_modules` kopiert und ist nicht im Repository.
 
 ## Arbeitsweise
 

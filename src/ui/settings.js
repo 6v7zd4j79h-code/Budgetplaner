@@ -6,7 +6,7 @@
 
 import {
   activeBudget, createBudget, deleteBudget, exportJson, importJson, isProtected, lastBackupAt, lock, removePassword,
-  renameBudget, resetAll, setPassword, store,
+  renameBudget, resetAll, setPassword, store, switchBudget,
 } from '../store.js';
 import { todayISO, formatDay } from '../dates.js';
 import { esc } from './dom.js';
