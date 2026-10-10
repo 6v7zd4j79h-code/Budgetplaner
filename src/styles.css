@@ -740,6 +740,17 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 .waste-card .muted { margin: 0 0 6px; }
 .waste-list { margin-top: 10px; }
 
+/* --- Regelmaessige Einkaeufe ------------------------------------------------------ */
+
+.regular-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; }
+.regular-item { padding: 10px 0; border-top: 1px solid var(--border); }
+.regular-item:first-child { border-top: 0; }
+.regular-head { display: flex; justify-content: space-between; gap: 12px; }
+.regular-name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.regular-price { white-space: nowrap; }
+.regular-item p { margin: 2px 0 0; }
+.regular-tip { font-size: 0.88rem; }
+
 /* --- Kassenbon ----------------------------------------------------------------- */
 
 .receipt-head { display: grid; gap: 12px; grid-template-columns: 96px minmax(0, 1fr); align-items: start; margin-bottom: 8px; }

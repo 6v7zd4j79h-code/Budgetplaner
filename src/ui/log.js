@@ -111,7 +111,10 @@ export function render({ data, key, account }) {
   <article class="card scan-teaser">
     <div><h2>Kassenbon scannen</h2>
       <p class="hint">Foto machen – die App liest die Artikel, du markierst, was unnötig war.</p></div>
-    <button type="button" class="btn primary" data-action="goto" data-view="receipt">📷 Scannen</button>
+    <div class="btn-row">
+      <button type="button" class="btn" data-action="goto" data-view="shopping">🛒 Regelmäßige Einkäufe</button>
+      <button type="button" class="btn primary" data-action="goto" data-view="receipt">📷 Scannen</button>
+    </div>
   </article>
 
   <article class="card">
