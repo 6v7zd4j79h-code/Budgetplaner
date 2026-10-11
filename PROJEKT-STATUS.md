@@ -202,11 +202,16 @@ in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
   `ANTHROPIC_API_KEY` bei Netlify, danach neu deployen. Noch nicht mit
   echtem Claude getestet (kein Schlüssel in der Cloud-Sitzung); Laufzeit
   bei langen Bons vs. Netlify-Zeitlimit beim ersten echten Test prüfen.
+- **Digitaler Rossmann-Bon (Screenshot)**: Coupons im eigenen Block nach
+  der Zwischensumme wurden vom letzten Artikel abgezogen (Tee fiel auf 0 €
+  und verschwand). Jetzt eigene Minus-Zeilen; Laden an Eigenmarken erkannt
+  (enerBiO/Prokudent → Rossmann, Balea/dmBio → dm, …); ISO-Datum; Preise
+  dürfen negativ sein (Coupon, Leergut).
 - **Regelmäßige Einkäufe ausblenden** (× pro Artikel, `data.regularHidden`),
   zählt dann auch nicht mehr für die Angebote.
 - Offen: ein Laden in der Nähe, dessen Name Mareike entfallen ist („Name
   ist Programm“?), Schulferien RLP automatisch.
-- 103 Tests grün, im Browser (Handy + Desktop) geprüft.
+- 105 Tests grün, im Browser (Handy + Desktop) geprüft.
 - PR #1 am 11.10. nach main übernommen (Deploy).
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.

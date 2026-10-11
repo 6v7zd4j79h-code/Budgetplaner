@@ -368,7 +368,7 @@ export const actions = {
   },
   'receipt-item-amount'(el, _event, ctx) {
     const item = scan.result.items[Number(el.dataset.key)];
-    item.amount = Math.max(0, parseMoney(el.value) ?? 0);
+    item.amount = parseMoney(el.value) ?? 0; // Minus erlaubt (Coupon, Leergut)
     if (item.amount) delete item.missingPrice;
     ctx.rerender();
   },
