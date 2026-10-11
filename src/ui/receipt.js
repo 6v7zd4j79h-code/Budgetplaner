@@ -56,7 +56,7 @@ function renderPick() {
   <article class="card">
     <h2>Kassenbon oder Rechnung</h2>
     <p>Fotografiere den Bon von oben, möglichst gerade und gut beleuchtet. Lange Bons gern in zwei Fotos.</p>
-    <p class="privacy">🔒 Das Foto wird nur hier auf dem Gerät gelesen. Es wird weder hochgeladen noch gespeichert.</p>
+    <p class="privacy">🔒 Das Foto wird zuerst nur hier auf dem Gerät gelesen. Fehlen dabei Preise oder geht die Summe nicht auf, wird es zum genauen Lesen an Claude (Anthropic) geschickt. Die App speichert keine Fotos.</p>
     ${photoButtons(true)}
     <p class="hint">Langer Bon? Einfach in mehreren Fotos von oben nach unten – die App fragt nach jedem Foto, ob noch etwas fehlt.</p>
     <p class="hint">📄 <strong>Digitaler Bon oder Rechnung als PDF</strong> (z. B. aus der EDEKA-, REWE-, Lidl-Plus- oder dm-App, oder eine heruntergeladene Rechnung)? Über „Bild oder PDF wählen“ – der Text wird direkt gelesen, ganz ohne Lesefehler.</p>
@@ -79,6 +79,53 @@ function photoButtons(first) {
 const thumb = (part, i) => (part.imageUrl
   ? `<img class="receipt-thumb" src="${part.imageUrl}" alt="Foto ${i + 1} des Kassenbons">`
   : '<div class="receipt-thumb pdf-thumb" aria-label="PDF-Kassenbon">📄 PDF</div>');
+
+// Fotos (keine PDFs) dieses Bons - nur die kann Claude genauer lesen.
+const photoFiles = () => (scan.parts || []).filter((p) => !p.pdf && p.file).map((p) => p.file);
+
+function needsClaude() {
+  const c = checkSum(scan.result.items, scan.result.printedTotal);
+  return photoFiles().length > 0 && (c.status !== 'ok' || c.missingPrices > 0);
+}
+
+function aiBanner() {
+  const ai = scan.ai;
+  if (ai?.busy) return '<div class="sum-check ai-busy">✨ Nicht alles war lesbar – Claude liest den Bon gerade genau … <span class="muted">(einige Sekunden)</span></div>';
+  if (ai?.done) return '<p class="ai-note">✨ Von Claude genau gelesen – bitte trotzdem kurz mit dem Bon vergleichen.</p>';
+  const retry = photoFiles().length ? '<button type="button" class="btn" data-action="receipt-ai">✨ Genau lesen lassen (Claude)</button>' : '';
+  if (ai?.error) return `<div class="sum-check warn">Genaues Lesen gerade nicht möglich: ${esc(ai.error)} Du siehst das Ergebnis der eingebauten Erkennung. ${retry}</div>`;
+  return retry && needsClaude() ? `<div class="ai-offer">${retry}</div>` : '';
+}
+
+// Zweiter Schritt: Claude liest die Fotos genau. Das Ergebnis ersetzt die
+// Artikel der eingebauten Erkennung; Laden/Datum/Summe nur, wenn erkannt.
+async function readWithAi(ctx) {
+  const files = photoFiles();
+  if (!files.length || scan.ai?.busy) return;
+  const current = scan;
+  scan.ai = { busy: true };
+  ctx.rerender();
+  try {
+    const { readWithClaude } = await import('../receipt-ai.js');
+    const res = await readWithClaude(files);
+    if (scan !== current) return; // inzwischen neu angefangen
+    const r = scan.result;
+    scan.result = {
+      ...r,
+      shop: res.shop || r.shop,
+      date: res.date || r.date,
+      total: res.total ?? r.total,
+      printedTotal: res.total ?? r.printedTotal,
+      items: res.items.map((it) => withMemory(it, ctx.data)),
+    };
+    openTags.clear();
+    scan.ai = { done: true };
+  } catch (error) {
+    if (scan !== current) return;
+    scan.ai = { error: error.message || String(error) };
+  }
+  ctx.rerender();
+}
 
 // Nachrechnen: Ergeben die Artikel die Summe auf dem Bon?
 function sumCheck(r, { actions = true } = {}) {
@@ -175,7 +222,8 @@ function renderReview(data) {
       <span>Die Buchung hat schon ${targetEntry.items.length} Artikel. Neue Artikel <strong>dazunehmen</strong> (z. B. zweiter Teil des Bons) statt ersetzen</span></label>` : ''}
 
     <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig · 🏷 Angebot · 📦 Vorrat · 🎁 Geschenk · für wen · 🥗 Ernährung · 📂 eigene Kategorie</span></h3>
-    ${r.items.length ? sumCheck(r) : '<p class="hint">Keine Artikel erkannt. Trag sie unten selbst ein oder versuch ein schärferes Foto.</p>'}
+    ${aiBanner()}
+    ${scan.ai?.busy ? '' : r.items.length ? sumCheck(r) : '<p class="hint">Keine Artikel erkannt. Trag sie unten selbst ein oder versuch ein schärferes Foto.</p>'}
     <ul class="item-list receipt-items">${r.items.map((it, i) => `
       ${i > 0 && it.part != null && r.items[i - 1].part != null && it.part !== r.items[i - 1].part ? `<li class="part-break">Foto ${it.part + 1}</li>` : ''}
       <li class="item${it.waste ? ' is-waste' : ''}${suspects.includes(i) ? ' is-suspect' : ''}${it.amount ? '' : ' is-missing'}">
@@ -241,7 +289,7 @@ export const actions = {
         ? await (await import('../pdf.js')).pdfText(file, progress)
         : await (await import('../ocr.js')).recognize(file, progress);
       if (pdf && !text.trim()) throw new Error('Im PDF steht kein lesbarer Text – ist es vielleicht ein eingescanntes Bild? Dann bitte als Foto aufnehmen');
-      parts.push({ text, imageUrl });
+      parts.push({ text, imageUrl, file, pdf });
       scan.text = joinParts(parts.map((part) => part.text));
       scan.imageUrl = parts.find((part) => part.imageUrl)?.imageUrl || null;
       const parsed = parseParts(parts.map((part) => part.text));
@@ -335,7 +383,7 @@ export const actions = {
   },
   'receipt-save'(_el, _event, ctx) {
     const r = scan.result;
-    const items = r.items.filter((i) => i.name && i.amount > 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}), ...(i.gift ? { gift: true } : {}), ...(i.forWhom ? { forWhom: i.forWhom } : {}), ...(i.diet ? { diet: i.diet } : {}), ...(i.lineId && i.lineId !== scan.lineId ? { lineId: i.lineId } : {}) }));
+    const items = r.items.filter((i) => i.name && i.amount !== 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}), ...(i.gift ? { gift: true } : {}), ...(i.forWhom ? { forWhom: i.forWhom } : {}), ...(i.diet ? { diet: i.diet } : {}), ...(i.lineId && i.lineId !== scan.lineId ? { lineId: i.lineId } : {}) }));
     const total = r.total || items.reduce((s, i) => s + i.amount, 0);
     if (!total) {
       const error = document.getElementById('receiptError');
@@ -375,6 +423,11 @@ export const actions = {
     scan.error = null;
     scan.phase = 'review';
     ctx.rerender();
+    // Erst die eingebaute Erkennung - nur wenn dabei etwas fehlt, Claude.
+    if (needsClaude()) readWithAi(ctx);
+  },
+  'receipt-ai'(_el, _event, ctx) {
+    readWithAi(ctx);
   },
   'receipt-drop-part'(_el, _event, ctx) {
     const part = scan.parts.pop();
