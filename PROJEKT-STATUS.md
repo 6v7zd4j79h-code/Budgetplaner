@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-10-11 (Cloud: regelmäßige Einkäufe, Anlässe). Davor 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -104,6 +104,24 @@ Am 07.10. (Cloud-Sitzung):
   (`switchBudget` war in `src/ui/settings.js` nicht importiert). Im Browser
   geprüft. Umschalten im Kopf war nicht betroffen.
 - 54 Tests grün, Build läuft.
+
+Am 10./11.10. (Cloud-Sitzung, Branch `regelmaessige-einkaeufe`, **noch nicht
+in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
+- **Regelmäßige Einkäufe** (`src/shopping.js`, Seite über Ausgaben →
+  „🛒 Regelmäßige Einkäufe“): was laut Bon-Artikeln in 6 Monaten mind. zweimal
+  gekauft wurde, Rhythmus, Läden, letzter Preis; „woanders günstiger“-Hinweis.
+  Pfand/Tüten zählen nicht, Läden aus Bon und Kontoauszug werden vereinheitlicht.
+- **Anlässe** (`src/occasions.js`, Seite „Anlässe“): Geburtstage (jährlich),
+  Ferien/Zeiträume, Feiertage (Ostern berechnet, Nikolaus, Weihnachten,
+  Silvester; einzeln abschaltbar), je mit Vorlauf und Notiz („Kuchenzutaten“,
+  „Kinder mittags zu Hause“). Ab dem Vorlauf Karte „Bald steht an“ in der
+  Übersicht. Gespeichert im Budget (`data.occasions`, `data.holidaysOff`),
+  also verschlüsselt mit abgeglichen – echte Geburtstage NICHT ins Repo.
+- Nächster Schritt: wöchentlicher Angebots-Check (Netlify-Funktion + Claude),
+  der Stammartikel und anstehende Anlässe mit Prospekten der Läden in der
+  Nähe abgleicht. Offen: Postleitzahl/Bundesland, Angebotsquelle; Schulferien
+  ggf. automatisch per Bundesland.
+- 71 Tests grün, im Browser (Handy + Desktop) geprüft.
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 

@@ -4,6 +4,7 @@
 import { formatDay } from '../dates.js';
 import { regularItems } from '../shopping.js';
 import { esc, eur } from './dom.js';
+import { soonCard } from './occasions.js';
 
 const MONTHS = 6;
 
@@ -38,11 +39,14 @@ export function render({ data }) {
       <p>Hier siehst du, was immer wieder im Einkaufskorb landet – wie oft, in welchem Laden und zu welchem Preis.</p>
       <p class="hint">Dafür braucht die App Artikel: Scanne ein paar Kassenbons oder trag bei einer Buchung unter „Artikel“ ein, was du gekauft hast.</p>
       <button type="button" class="btn primary" data-action="goto" data-view="receipt">📷 Kassenbon scannen</button>
-    </article>`;
+    </article>
+    ${soonCard(data)}
+    <p class="hint"><button type="button" class="link-btn" data-action="goto" data-view="occasions">🎂 Geburtstage, Feiertage und Ferien verwalten</button></p>`;
   }
 
   const tips = r.items.filter((i) => i.cheaper);
   return `
+  ${soonCard(data)}
   <article class="card">
     <header class="section-head"><h2>Regelmäßige Einkäufe</h2>
       <button type="button" class="btn ghost" data-action="goto" data-view="receipt">📷 Scannen</button></header>
@@ -63,7 +67,9 @@ export function render({ data }) {
     <h2>Wo du einkaufst</h2>
     <ul class="mini">${r.shops.map((s) => `<li><span>${esc(s.shop)} <span class="muted">· ${s.receipts}×</span></span><span>${eur(s.spent)}</span></li>`).join('')}</ul>
     <p class="hint">Gezählt werden nur Einkäufe mit Artikeln aus diesem Budget.</p>
-  </article>`;
+  </article>
+
+  <p class="hint"><button type="button" class="link-btn" data-action="goto" data-view="occasions">🎂 Geburtstage, Feiertage und Ferien verwalten</button></p>`;
 }
 
 export const actions = {};
