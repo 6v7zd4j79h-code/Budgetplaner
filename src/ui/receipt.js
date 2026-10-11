@@ -139,7 +139,6 @@ function renderReview(data) {
   const people = peopleOf(data);
   const sum = r.items.reduce((s, i) => s + i.amount, 0);
   const waste = r.items.reduce((s, i) => s + (i.waste ? i.amount : 0), 0);
-  const diff = (r.total || 0) - sum;
   const suspects = checkSum(r.items, r.printedTotal).suspects.slice(0, 1);
   const matches = candidates(data.log, r.total, r.date);
   if (scan.target === undefined) scan.target = presetEntryId || matches[0]?.id || 'new';
@@ -187,7 +186,6 @@ function renderReview(data) {
 
     <div class="receipt-sums">
       <span>Artikel ${eur(sum)}${r.total ? ` von ${eur(r.total)}` : ''}</span>
-      ${r.total && diff !== 0 ? `<span class="${diff < 0 ? 'neg' : 'muted'}">${diff > 0 ? `${eur(diff)} nicht zugeordnet – zählt als nötig` : `Artikel sind ${eur(-diff)} mehr als die Summe – Preise prüfen`}</span>` : ''}
       <strong class="waste-sum">Unnötig: ${eur(waste)}</strong>
     </div>
     <p class="form-error" id="receiptError" hidden></p>
