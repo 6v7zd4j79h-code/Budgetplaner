@@ -1,13 +1,16 @@
 // Regelmaessige Einkaeufe: was laut Kassenbons immer wieder im Korb landet,
 // wie oft, wo und zu welchem Preis.
 
-import { formatDay } from '../dates.js';
-import { regularItems } from '../shopping.js';
+import { formatDay, todayISO } from '../dates.js';
+import { mealPlanItems, mealPlanText, regularItems, stockItems } from '../shopping.js';
 import { update } from '../store.js';
 import { esc, eur } from './dom.js';
 import { soonCard } from './occasions.js';
 
 const MONTHS = 6;
+
+// Auswahl fuer die Essensplan-Liste; gilt nur, solange die Seite offen ist.
+const meal = { days: 7, foodOnly: true, copied: false };
 
 function rhythm(days) {
   if (days == null) return '';
@@ -32,6 +35,42 @@ function itemRow(i) {
   </li>`;
 }
 
+// Was eingekauft wurde, als Liste zum Kopieren - z. B. in den Essensplan des
+// Familienplaners, um daraus Abendessen zu planen.
+function mealCard(data) {
+  const r = mealPlanItems(data, { days: meal.days, foodOnly: meal.foodOnly });
+  return `<article class="card">
+    <h2>🍽 Für den Essensplan</h2>
+    <p class="muted">Was in den letzten Tagen eingekauft wurde – ohne Preise und Läden, zum Einfügen in den Familienplaner.</p>
+    <div class="btn-row">
+      <label>Zeitraum <select data-action="meal-days">
+        ${[3, 7, 14].map((d) => `<option value="${d}"${d === meal.days ? ' selected' : ''}>letzte ${d} Tage</option>`).join('')}
+      </select></label>
+      <label><input type="checkbox" data-action="meal-food"${meal.foodOnly ? ' checked' : ''}> nur Lebensmittel</label>
+    </div>
+    ${r.items.length || r.stock.length
+      ? `<pre class="meal-list">${esc(mealPlanText(r))}</pre>
+        <div class="btn-row">
+          <button type="button" class="btn primary" data-action="meal-copy">${meal.copied ? '✓ Kopiert' : '📋 Liste kopieren'}</button>
+          ${typeof navigator !== 'undefined' && navigator.share ? '<button type="button" class="btn" data-action="meal-share">↗ Teilen</button>' : ''}
+        </div>`
+      : '<p class="hint">In diesem Zeitraum keine Einkäufe mit Artikeln. Scanne einen Kassenbon, dann erscheint hier die Liste.</p>'}
+  </article>`;
+}
+
+// Was kuerzlich auf Vorrat gekauft wurde: nicht doppelt kaufen.
+function stockCard(data) {
+  const stock = stockItems(data.log, { used: data.stockUsed || {} });
+  if (!stock.length) return '';
+  return `<article class="card">
+    <h2>📦 Auf Vorrat gekauft</h2>
+    <p class="muted">Aus den letzten 6 Wochen: mit „Vorrat“ markiert oder mindestens 3 Stück auf einem Bon. Steht so etwas im Angebot, erinnert die App daran.
+      Abhaken musst du nichts – nur wenn etwas schon leer ist, kannst du es herausnehmen.</p>
+    <ul class="mini">${stock.map((s) => `<li><span>${esc(s.name)} <span class="muted">· ${s.pieces > 1 ? `${s.pieces}× ` : ""}am ${formatDay(s.date)} · ${esc(s.shop)}</span></span>
+      <button type="button" class="link-btn" data-action="stock-used" data-key="${esc(s.key)}">aufgebraucht</button></li>`).join('')}</ul>
+  </article>`;
+}
+
 export function render({ data }) {
   const r = regularItems(data.log, { months: MONTHS, hidden: data.regularHidden || [] });
 
@@ -49,6 +88,8 @@ export function render({ data }) {
   const tips = r.items.filter((i) => i.cheaper);
   return `
   ${soonCard(data)}
+  ${mealCard(data)}
+  ${stockCard(data)}
   <article class="card">
     <header class="section-head"><h2>Regelmäßige Einkäufe</h2>
       <div class="btn-row"><button type="button" class="btn" data-action="goto" data-view="offers">🏷 Angebote</button>
@@ -77,7 +118,54 @@ export function render({ data }) {
   <p class="hint"><button type="button" class="link-btn" data-action="goto" data-view="occasions">🎂 Geburtstage, Feiertage und Ferien verwalten</button></p>`;
 }
 
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Aeltere Browser: ueber ein unsichtbares Textfeld kopieren.
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.append(area);
+    area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    return ok;
+  }
+}
+
+const mealText = (data) => mealPlanText(mealPlanItems(data, { days: meal.days, foodOnly: meal.foodOnly }));
+
 export const actions = {
+  'stock-used'(el) {
+    update((data) => { data.stockUsed = { ...(data.stockUsed || {}), [el.dataset.key]: todayISO() }; });
+  },
+  'meal-days'(el, _event, ctx) {
+    meal.days = Number(el.value) || 7;
+    meal.copied = false;
+    ctx.rerender();
+  },
+  'meal-food'(el, _event, ctx) {
+    meal.foodOnly = el.checked;
+    meal.copied = false;
+    ctx.rerender();
+  },
+  async 'meal-copy'(_el, _event, ctx) {
+    if (!(await copyText(mealText(ctx.data)))) return;
+    meal.copied = true;
+    ctx.rerender();
+    setTimeout(() => { meal.copied = false; ctx.rerender(); }, 2500);
+  },
+  async 'meal-share'(_el, _event, ctx) {
+    try {
+      await navigator.share({ title: 'Eingekauft', text: mealText(ctx.data) });
+    } catch {
+      // Abgebrochen - nichts zu tun.
+    }
+  },
   'regular-hide'(el) {
     update((data) => {
       data.regularHidden = [...new Set([...(data.regularHidden || []), el.dataset.key])];

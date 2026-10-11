@@ -98,3 +98,87 @@ export function regularItems(log, { today = todayISO(), months = 6, minCount = 2
     shops: [...shops.values()].sort((a, b) => b.receipts - a.receipts || b.spent - a.spent),
   };
 }
+
+// Fuer den Essensplan (z. B. im Familienplaner): was in den letzten Tagen
+// eingekauft wurde, als schlichte Liste ohne Preise, Laeden oder Konten -
+// zum Kopieren und Einfuegen. Geschenke, Pfand und Tueten fallen weg.
+// foodOnly: nur Artikel aus Kategorien wie "Lebensmittel"; Artikel ohne
+// Kategorie bleiben drin, damit nichts verloren geht.
+const FOOD = /lebensmittel|essen|nahrung|einkauf|supermarkt|getränk|getraenk|haushalt|food/i;
+
+// Vorrat: was in den letzten Wochen auf Vorrat gekauft wurde - mit dem Haken
+// "Vorrat" oder mindestens BULK Stueck auf einem Bon. Die App zaehlt nicht
+// mit, was verbraucht ist; sie erinnert nur, damit nichts doppelt gekauft
+// wird. used: { itemKey: Datum } - "ist aufgebraucht", gilt bis zum naechsten
+// Vorratskauf.
+const BULK = 3;
+
+export function stockItems(log, { today = todayISO(), days = 42, used = {} } = {}) {
+  const from = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1, +today.slice(8, 10) - (days - 1)))
+    .toISOString().slice(0, 10);
+  const byKey = new Map();
+  for (const entry of log || []) {
+    if (!Array.isArray(entry.items) || entry.date < from || entry.date > today || entry.gift) continue;
+    const here = new Map();
+    for (const item of entry.items) {
+      const key = itemKey(item.name);
+      if (!key || SKIP.test(key) || item.gift || !(item.amount > 0)) continue;
+      const h = here.get(key) || { key, name: item.name, pieces: 0, flagged: false, lineId: item.lineId || entry.lineId || null };
+      h.pieces += 1;
+      if (item.stock) h.flagged = true;
+      here.set(key, h);
+    }
+    for (const h of here.values()) {
+      if (!h.flagged && h.pieces < BULK) continue;
+      if (used[h.key] && used[h.key] >= entry.date) continue;
+      const prev = byKey.get(h.key);
+      if (!prev || entry.date > prev.date) byKey.set(h.key, { ...h, date: entry.date, shop: shopName(entry.note) });
+    }
+  }
+  return [...byKey.values()].sort((a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name, 'de'));
+}
+
+// Passt ein Suchwort wie "Nudeln" zu einem Vorratsartikel ("Bio Nudeln 500g")?
+export function stockFor(term, stock) {
+  const word = String(term || '').toLowerCase();
+  return word ? stock.find((s) => s.key.split(' ').includes(word)) || null : null;
+}
+
+export function mealPlanItems(data, { today = todayISO(), days = 7, foodOnly = true } = {}) {
+  const from = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1, +today.slice(8, 10) - (days - 1)))
+    .toISOString().slice(0, 10);
+  const lineName = (date, id) => (id && data.months?.[monthKey(date)]?.lines?.expenses?.find((l) => l.id === id)?.name) || '';
+  const entries = (data.log || [])
+    .filter((e) => Array.isArray(e.items) && e.items.length && e.date >= from && e.date <= today && !e.gift)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const byKey = new Map();
+  for (const entry of entries) {
+    for (const item of entry.items) {
+      const key = itemKey(item.name);
+      if (!key || SKIP.test(key) || item.gift) continue;
+      const category = lineName(entry.date, item.lineId || entry.lineId);
+      if (foodOnly && category && !FOOD.test(category)) continue;
+      const stat = byKey.get(key) || { name: item.name, count: 0 };
+      stat.count += 1;
+      stat.name = item.name;
+      byKey.set(key, stat);
+    }
+  }
+  const items = [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  // Was frueher auf Vorrat gekauft wurde und vermutlich noch da ist.
+  const stock = stockItems(data.log, { today, used: data.stockUsed || {} })
+    .filter((s) => s.date < from && !byKey.has(s.key))
+    .filter((s) => { const c = lineName(s.date, s.lineId); return !foodOnly || !c || FOOD.test(c); });
+  return { from, to: today, receipts: entries.length, items, stock };
+}
+
+export function mealPlanText({ from, to, items, stock = [] }) {
+  const day = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`;
+  const lines = items.length ? [`Eingekauft ${day(from)}–${day(to)}:`, ...items.map((i) => `- ${i.name}${i.count > 1 ? ` (${i.count}×)` : ''}`)] : [];
+  if (stock.length) {
+    if (lines.length) lines.push('');
+    lines.push('Auf Vorrat (vermutlich noch da):', ...stock.map((s) => `- ${s.name} (${s.pieces > 1 ? `${s.pieces}×, ` : ""}${day(s.date)})`));
+  }
+  return lines.join('\n');
+}

@@ -70,6 +70,13 @@ function reason(g) {
   return parts.join(' · ');
 }
 
+// Kuerzlich auf Vorrat gekauft - nicht doppelt kaufen.
+function stockNote(g) {
+  if (!g.stock) return '';
+  return `<p class="stock-note">📦 Vorrat: am ${formatDay(g.stock.date)} ${g.stock.pieces > 1 ? `${g.stock.pieces}× ` : ""}${esc(g.stock.name)} gekauft – vielleicht noch genug da?
+    <button type="button" class="link-btn" data-action="stock-used" data-key="${esc(g.stock.key)}">ist aufgebraucht</button></p>`;
+}
+
 function offerRow(o) {
   return `<li class="offer">
     <div class="offer-main">
@@ -148,7 +155,7 @@ export function offersCard(data) {
   return `<article class="card">
     <header class="section-head"><h2>Angebote der Woche</h2>
       <button type="button" class="btn ghost" data-action="goto" data-view="offers">Alle ${groups.length}</button></header>
-    ${top.length ? `<ul class="mini">${top.map(({ g, o }) => `<li><span>${o.bio ? '🌿 ' : ''}${esc(g.term)} <span class="muted">· ${esc(o.shop)}</span></span><span>${eur(o.price)}</span></li>`).join('')}</ul>`
+    ${top.length ? `<ul class="mini">${top.map(({ g, o }) => `<li><span>${g.stock ? '📦 ' : ''}${o.bio ? '🌿 ' : ''}${esc(g.term)} <span class="muted">· ${esc(o.shop)}${g.stock ? ' · noch Vorrat' : ''}</span></span><span>${eur(o.price)}</span></li>`).join('')}</ul>`
       : '<p class="muted">Diese Woche nichts Passendes im Angebot.</p>'}
   </article>`;
 }
@@ -187,6 +194,7 @@ export function render(ctx) {
     <header class="section-head"><h2>${g.sources.map((s) => SOURCE_LABEL[s]).join('')} ${esc(g.term)}</h2>
       <span class="muted small">${g.offers.length} ${g.offers.length === 1 ? 'Angebot' : 'Angebote'}</span></header>
     ${reason(g) ? `<p class="muted small">${reason(g)}</p>` : ''}
+    ${stockNote(g)}
     <ul class="offer-list">${g.offers.slice(0, 5).map(offerRow).join('')}</ul>
   </article>`).join('') : `<article class="card"><p class="empty">Diese Woche nichts Passendes in euren Läden${settings.bio === 'only' ? ' (nur Bio)' : ''}.</p></article>`) : ''}
 
@@ -203,6 +211,9 @@ function saveSettings(change) {
 }
 
 export const actions = {
+  'stock-used'(el) {
+    update((data) => { data.stockUsed = { ...(data.stockUsed || {}), [el.dataset.key]: todayISO() }; });
+  },
   'offers-save'(form, event, ctx) {
     event.preventDefault();
     const fields = new FormData(form);

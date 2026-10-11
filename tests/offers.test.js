@@ -196,3 +196,17 @@ test('Karten & Apps: Payback-Extrapunkte, Angebote nur mit fremder App nach hint
   const [none] = matchOffers(results, list, { ...settings, cards: [] }, { today: '2026-10-11' });
   assert.ok(none.offers.every((o) => !o.points));
 });
+
+test('Merkliste: kuerzlich auf Vorrat gekauft wird markiert und nach hinten sortiert', () => {
+  const data = {
+    log: [{ id: 'x', date: '2026-10-02', note: 'ALDI', amount: 500, items: [
+      { id: '1', name: 'Nudeln', amount: 99 }, { id: '2', name: 'Nudeln', amount: 99 }, { id: '3', name: 'Nudeln', amount: 99 }] }],
+    offerSettings: { zip: '12345', terms: [{ term: 'Nudeln' }, { term: 'Kaffee' }], shops: ['lidl'] },
+  };
+  const list = watchlist(data, { items: [] }, { today: '2026-10-11' });
+  assert.equal(list.find((e) => e.term === 'Nudeln').stock.pieces, 3);
+  assert.equal(list.find((e) => e.term === 'Kaffee').stock, null);
+  const offer = (id, title) => ({ id, title, brand: '', description: '', price: 99, retailer: 'Lidl', retailerKey: 'lidl', to: '2026-10-20' });
+  const groups = matchOffers({ Nudeln: [offer('a', 'Nudeln')], Kaffee: [offer('b', 'Kaffee')] }, list, { shops: ['lidl'], bio: 'any', exclude: '', cards: [] }, { today: '2026-10-11' });
+  assert.deepEqual(groups.map((g) => g.term), ['Kaffee', 'Nudeln']);
+});

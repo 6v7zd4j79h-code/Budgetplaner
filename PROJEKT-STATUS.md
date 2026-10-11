@@ -215,6 +215,13 @@ Abgleich über Netlify Blobs statt Neon/Supabase (07.10.).
 
 ## Offene Punkte / Hinweise
 
+- **Für das Projekt Sternenplan (dort umsetzen, nicht hier):** Essensplan mit
+  Feld zum Einfügen der Liste aus „🍽 Für den Essensplan“ (Budgetplaner →
+  Regelmäßige Einkäufe), eigene Gerichte mit Zutaten, Vorschläge
+  „Abendessen 1/2/3“ aus dem Eingekauften und dem Vorrat. Verbrauch nur über
+  „gekocht“ im Essensplan, kein eigenes Abhaken (Mareike, 11.10.). Später
+  evtl. automatische Brücke statt Kopieren.
+
 - **Kopie auf dem PC** unter `Downloads/Projekte/Budgetplaner` (entpackte ZIP).
   Nur Sicherung – maßgeblich ist GitHub. Am PC weiterarbeiten:
   `git clone https://github.com/6v7zd4j79h-code/Budgetplaner`

@@ -16,6 +16,7 @@
 
 import { todayISO } from './dates.js';
 import { upcomingOccasions } from './occasions.js';
+import { stockFor, stockItems } from './shopping.js';
 
 export const SHOPS = [
   { id: 'aldi-sued', name: 'ALDI SÜD', match: /aldi[\s-]*s(ü|ue|u)d/i },
@@ -136,7 +137,8 @@ export function occasionTerms(note) {
 }
 
 // Die Merkliste: woher kommt welcher Suchbegriff?
-//   { term, key, sources: ['regular'|'occasion'|'own'], usual: { price, shop }, occasions: [...], quality }
+//   { term, key, sources: ['regular'|'occasion'|'own'], usual: { price, shop }, occasions: [...], quality,
+//     stock: { name, pieces, date } | null }  - stock: kuerzlich auf Vorrat gekauft
 export function watchlist(data, regular, { today = todayISO(), maxRegular = 25 } = {}) {
   const s = offerSettings(data);
   const hidden = new Set(s.hidden.map((h) => h.toLowerCase()));
@@ -159,7 +161,8 @@ export function watchlist(data, regular, { today = todayISO(), maxRegular = 25 }
   for (const o of upcomingOccasions(data, { today }).filter((x) => x.soon)) {
     for (const term of occasionTerms(o.note)) add(term, { source: 'occasion', occasion: o.name });
   }
-  return [...list.values()];
+  const stock = stockItems(data.log, { today, used: data.stockUsed || {} });
+  return [...list.values()].map((entry) => ({ ...entry, stock: stockFor(entry.term, stock) }));
 }
 
 function excluded(offer, exclude) {
@@ -203,8 +206,9 @@ export function matchOffers(results, list, settings, { today = todayISO() } = {}
       : settings.bio === 'prefer' && a.bio !== b.bio ? (a.bio ? -1 : 1) : a.price - b.price));
     if (offers.length) groups.push({ ...entry, offers });
   }
-  // Erst was ihr regelmaessig kauft und guenstiger ist, dann Anlaesse, dann der Rest.
-  const rank = (g) => (g.offers.some((o) => o.saving > 0) ? 0 : g.sources.includes('occasion') ? 1 : g.sources.includes('own') ? 2 : 3);
+  // Erst was ihr regelmaessig kauft und guenstiger ist, dann Anlaesse, dann der
+  // Rest; was gerade auf Vorrat da ist, ganz nach hinten.
+  const rank = (g) => (g.stock ? 4 : g.offers.some((o) => o.saving > 0) ? 0 : g.sources.includes('occasion') ? 1 : g.sources.includes('own') ? 2 : 3);
   return groups.sort((a, b) => rank(a) - rank(b));
 }
 

@@ -743,6 +743,9 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 /* --- Regelmaessige Einkaeufe ------------------------------------------------------ */
 
 .regular-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; }
+.meal-list { white-space: pre-wrap; font: inherit; margin: 10px 0; padding: 10px 12px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: min(var(--radius), 8px); max-height: 260px; overflow: auto; }
+.stock-note { margin: 6px 0; padding: 8px 10px; border-radius: min(var(--radius), 8px); background: var(--warn-bg); color: var(--warn-text); font-size: .92em; }
+.stock-note .link-btn { color: inherit; text-decoration: underline; }
 .regular-item { padding: 10px 0; border-top: 1px solid var(--border); }
 .regular-item:first-child { border-top: 0; }
 .regular-head { display: flex; align-items: flex-start; gap: 8px; }
