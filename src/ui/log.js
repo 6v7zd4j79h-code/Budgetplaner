@@ -421,8 +421,8 @@ export const actions = {
   },
   'item-amount'(el) {
     const [entryId, itemId] = el.dataset.key.split(':');
-    const amount = parseMoney(el.value);
-    if (amount == null || amount < 0) return;
+    const amount = parseMoney(el.value); // Minus erlaubt (Coupon, Leergut)
+    if (amount == null) return;
     update((data) => {
       const item = data.log.find((e) => e.id === entryId)?.items?.find((i) => i.id === itemId);
       if (item) item.amount = amount;

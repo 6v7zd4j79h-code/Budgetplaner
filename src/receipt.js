@@ -25,7 +25,7 @@ const TOTAL = /^(summe|zu zahlen|gesamt(betrag)?|total|endbetrag|endsumme|rechnu
 // Zwischensummen (vor allem auf Rechnungen) sind weder Artikel noch Endbetrag.
 const SUBTOTAL = /^(zwischensumme|warenwert|nettobetrag|netto)|^(summe|gesamt\w*)\s*\(?netto/i;
 // Zeilen, die nie Artikel sind.
-const NOISE = /(mwst|mw\.?-?st|\bust\b|steuer|netto|brutto|rückgeld|rueckgeld|gegeben|\bbar\b|ec-?cash|girocard|kartenzahlung|visa|mastercard|maestro|kontaktlos|terminal|beleg|\btse\b|signatur|transaktion|kassierer|bon-?nr|filiale|vielen dank|öffnungszeiten|www\.|\btel\b\.?|ust-?id|st\.?-?nr|payback|treuepunkte|^eur$|^€$|^\*+$)/i;
+const NOISE = /(mwst|mw\.?-?st|\bust\b|steuer|netto|brutto|rückgeld|rueckgeld|gegeben|\bbar\b|ec-?cash|girocard|kartenzahlung|visa|mastercard|maestro|kontaktlos|terminal|beleg|\btse\b|signatur|transaktion|kassierer|bon-?nr|filiale|vielen dank|öffnungszeiten|www\.|\btel\b\.?|ust-?id|st\.?-?nr|payback|treuepunkte|gespart|^eur$|^€$|^\*+$)/i;
 const QUANTITY = /^\s*-?\d+([.,]\d+)?\s*(x|stk|st\.?|kg)\s*[x*]?\s*\d+[.,]\d{2}/i;
 const DISCOUNT = /(rabatt|nachlass|coupon|gutschein|aktion|preisvorteil|sie sparen|ersparnis|mitarbeiter)/i;
 
@@ -52,6 +52,7 @@ function cleanName(text) {
     .replace(/\s{2,}/g, ' ')
     .replace(/[|_~]+/g, ' ')
     .replace(/\s+[A-D12*]$/i, '')
+    .replace(/\s*(€|eur)$/i, '')
     .trim();
 }
 
@@ -61,9 +62,23 @@ export function detectShop(lines) {
     const shop = SHOPS.find((s) => new RegExp(`(^|[^A-ZÄÖÜ])${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^A-ZÄÖÜ]|$)`).test(upper));
     if (shop) return SHOP_DISPLAY[shop] || shop;
   }
-  const first = lines.find((l) => /[a-zäöü]{3,}/i.test(l));
+  // Kein Ladenname (z. B. Screenshot eines digitalen Bons): an Eigenmarken erkennen.
+  const all = lines.join(' ').toUpperCase();
+  const brand = BRANDS.find(([re]) => re.test(all));
+  if (brand) return brand[1];
+  const first = lines.find((l) => /[a-zäöü]{3,}/i.test(l) && !GENERIC_HEAD.test(l));
   return first ? first.slice(0, 30) : '';
 }
+
+// Eigenmarken, an denen sich der Laden erkennen laesst.
+const BRANDS = [
+  [/\bENERBIO\b|\bPROKUDENT\b|\bISANA\b|\bBABYDREAM\b|\bALOUETTE\b|\bALTERRA\b/, 'Rossmann'],
+  [/\bBALEA\b|\bDMBIO\b|\bALVERDE\b|\bBABYLOVE\b|\bEBELIN\b|\bMIVOLIS\b/, 'dm'],
+  [/NUR NUR NATUR|\bGUTBIO\b|\bMILSANI\b|\bMOSER ROTH\b/, 'ALDI SÜD'],
+  [/\bMILBONA\b|\bCIEN\b|\bFAVORINA\b|\bW5\b/, 'LIDL'],
+];
+// Kopfzeilen, die kein Ladenname sind (App-Titel, Uhrzeit ...).
+const GENERIC_HEAD = /digitaler bon|kassenbon|e-?bon|^\d{1,2}:\d{2}/i;
 
 // Artikelzeile ohne lesbaren Preis: Artikelnummer + Name (ALDI, Lidl, ...).
 // Die Texterkennung verliert auf Handyfotos manchmal die Preisspalte - dann
@@ -104,6 +119,7 @@ export function parseReceipt(text, { keepStorno = false } = {}) {
   const items = [];
   let afterTotal = false;
   let storno = false; // die naechste Artikelzeile ist eine Stornierung
+  let discountBlock = false;
 
   // Stornierung: den passenden Artikel ganz entfernen (gleiche Artikelnummer,
   // sonst gleicher Name/Betrag), nicht nur den Preis abziehen.
@@ -120,9 +136,14 @@ export function parseReceipt(text, { keepStorno = false } = {}) {
     if (!date) {
       const m = line.match(/\b(\d{1,2}\.\d{1,2}\.\d{2,4})\b/);
       if (m) date = parseDate(m[1]);
+      const iso = !m && line.match(/\b(20\d{2})-(\d{2})-(\d{2})(?:T|\b)/);
+      if (iso) date = `${iso[1]}-${iso[2]}-${iso[3]}`;
     }
     const price = line.match(PRICE_AT_END);
-    if (SUBTOTAL.test(line)) continue;
+    // Ab der Zwischensumme (oder "Coupon-Ersparnis:") folgen Coupons, die
+    // nicht zum Artikel davor gehoeren - sie werden eigene Minus-Zeilen.
+    if (SUBTOTAL.test(line)) { discountBlock = true; continue; }
+    if (!price && DISCOUNT.test(line)) { discountBlock = true; continue; }
     if (TOTAL.test(line)) {
       if (price && total == null) total = Math.abs(toCents(price[1], price[2], price[3], price[4]));
       afterTotal = true;
@@ -159,9 +180,14 @@ export function parseReceipt(text, { keepStorno = false } = {}) {
       continue;
     }
     if (amount < 0 || DISCOUNT.test(name)) {
-      // Rabatt gehoert zum Artikel davor.
+      // Rabatt direkt unter dem Artikel gehoert zu ihm. Coupons aus einem
+      // eigenen Block (oder groesser als der Artikel) werden eigene Minus-Zeilen.
       const previous = items[items.length - 1];
-      if (previous) previous.amount = Math.max(0, previous.amount - Math.abs(amount));
+      if (!discountBlock && previous && previous.amount >= Math.abs(amount)) {
+        previous.amount -= Math.abs(amount);
+      } else if (/[a-zäöüß]{2,}/i.test(name) || items.length) {
+        items.push({ name: titleCase(name) || 'Rabatt', amount: -Math.abs(amount), discount: true });
+      }
       continue;
     }
     if (!/[a-zäöüß]{2,}/i.test(name)) continue; // nur Zahlen/Zeichensalat

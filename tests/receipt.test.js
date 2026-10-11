@@ -263,3 +263,35 @@ Betrag 3,03 EUR`);
   assert.deepEqual(r.items.map((i) => [i.name, i.amount]), [['Kürbis Mix lose', 303]]);
   assert.equal(r.printedTotal, 303);
 });
+
+// Nachgebaut nach einem digitalen Rossmann-Bon (Screenshot aus der App):
+// kein Ladenname, Coupons in eigenem Block nach der Zwischensumme, Datum
+// nur im ISO-Format.
+test('Digitaler Bon: Coupon-Block wird zu Minus-Zeilen, Laden an Eigenmarke erkannt', () => {
+  const r = parseReceipt(`13:55
+Digitaler Bon 000
+Du hast insgesamt €1,00 gespart!
+4068134181497 ENERBIO BRENNNESSE €1,59 B
+4068134036193 PROKUDENT BRUSH-ST €1,99 A
+5060229014122 PUKKA DREI MINZE T €3,99 B
+Zwischensumme: €7,57
+Deine Coupon-Ersparnis heute:
+9823284955580 Coupon 20% Pukka €0,80
+9823219992277 10% COUPONAKTION €0,20
+Summe: €6,57
+American Express €6,57
+Start: 2026-10-07T12:04:26+02:00`);
+  assert.equal(r.shop, 'Rossmann');
+  assert.equal(r.date, '2026-10-07');
+  assert.equal(r.printedTotal, 657);
+  assert.deepEqual(r.items.map((i) => [i.name, i.amount]), [
+    ['Enerbio Brennnesse', 159], ['Prokudent Brush-St', 199], ['Pukka Drei Minze T', 399],
+    ['Coupon 20% Pukka', -80], ['10% Couponaktion', -20],
+  ]);
+  assert.equal(r.sum, 657);
+});
+
+test('Rabatt direkt unter dem Artikel wird weiter abgezogen', () => {
+  const r = parseReceipt('REWE\nTOMATEN 2,49 B\nRabatt Tomaten -0,50\nSUMME 1,99');
+  assert.deepEqual(r.items.map((i) => [i.name, i.amount]), [['Tomaten', 199]]);
+});
