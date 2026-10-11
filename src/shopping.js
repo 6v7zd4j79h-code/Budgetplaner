@@ -19,7 +19,10 @@ export function shopName(note) {
   return text ? detectShop([text]) || text : 'Unbekannt';
 }
 
-export function regularItems(log, { today = todayISO(), months = 6, minCount = 2 } = {}) {
+// hidden: Artikel (itemKey), die jemand als "kein regelmaessiger Einkauf"
+// markiert hat - z. B. Halloween-Deko aus dem Angebot.
+export function regularItems(log, { today = todayISO(), months = 6, minCount = 2, hidden = [] } = {}) {
+  const hiddenKeys = new Set(hidden);
   const from = `${addMonths(monthKey(today), -(months - 1))}-01`;
   const entries = (log || []).filter((e) => Array.isArray(e.items) && e.items.length && e.date >= from && e.date <= today);
 
@@ -83,7 +86,7 @@ export function regularItems(log, { today = todayISO(), months = 6, minCount = 2
   });
 
   const items = all
-    .filter((i) => i.count >= minCount)
+    .filter((i) => i.count >= minCount && !hiddenKeys.has(i.key))
     .sort((a, b) => b.count - a.count || b.spent - a.spent || a.name.localeCompare(b.name, 'de'));
 
   return {
@@ -91,6 +94,7 @@ export function regularItems(log, { today = todayISO(), months = 6, minCount = 2
     receipts: entries.length,
     articles: all.length,
     items,
+    hiddenItems: all.filter((i) => hiddenKeys.has(i.key)).map((i) => ({ key: i.key, name: i.name })),
     shops: [...shops.values()].sort((a, b) => b.receipts - a.receipts || b.spent - a.spent),
   };
 }

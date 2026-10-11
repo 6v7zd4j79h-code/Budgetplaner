@@ -19,6 +19,11 @@ import * as occasions from './ui/occasions.js';
 import * as offers from './ui/offers.js';
 import { backupOverdue } from './ui/settings.js';
 import { applyPalette } from './palette.js';
+import { registerSW } from 'virtual:pwa-register';
+
+// Neue Version: Service Worker sofort uebernehmen und die Seite einmal neu
+// laden - sonst sieht man Updates erst nach zweimaligem Schliessen der App.
+registerSW({ immediate: true });
 
 const VIEWS = {
   overview: { module: overview, title: 'Übersicht', icon: '◔', monthly: true },
