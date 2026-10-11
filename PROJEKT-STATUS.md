@@ -185,11 +185,33 @@ in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
   Lebensmittel, Schlafanzug bei ALDI → Kleidung; `expenseActuals` teilt
   die Buchung im Budget entsprechend auf.
 - Artikel-Optionen eingeklappt („＋ mehr“), gesetzte Haken als Chips.
+- **Echter ALDI-Bon (3 Fotos) untersucht** (12.10.): Die eingebaute
+  Texterkennung (Tesseract) liest auf Handyfotos von Thermobons die
+  Preisspalte nicht (0 von 73 Preisen), Fotos überlappen 20–35 Zeilen,
+  Sofortstorno. Bon-Leser jetzt: Artikel ohne Preis bleiben sichtbar
+  („Preis?“), Storno über Fotogrenzen, Überlappung per längster gemeinsamer
+  Teilfolge, Summe auch ohne „Betrag“.
+- **Genau lesen mit Claude** (`server/receipt-ai-core.js`, Funktion
+  `netlify/functions/receipt-ai.mjs`, App `src/receipt-ai.js`): Mareikes
+  Wunsch – **immer zuerst die eingebaute Erkennung**, nur wenn Preise fehlen
+  oder die Summe nicht aufgeht, automatisch Claude (Modell
+  `claude-haiku-5-5`, günstig, effort low, strukturierte JSON-Ausgabe).
+  Fotos werden auf 1600 px verkleinert. Tageslimit 40 (Netlify Blobs,
+  `RECEIPT_AI_DAILY_LIMIT`). **Einrichtung nötig:** API-Schlüssel von
+  console.anthropic.com (Guthaben aufladen) als Umgebungsvariable
+  `ANTHROPIC_API_KEY` bei Netlify, danach neu deployen. Noch nicht mit
+  echtem Claude getestet (kein Schlüssel in der Cloud-Sitzung); Laufzeit
+  bei langen Bons vs. Netlify-Zeitlimit beim ersten echten Test prüfen.
+- **Digitaler Rossmann-Bon (Screenshot)**: Coupons im eigenen Block nach
+  der Zwischensumme wurden vom letzten Artikel abgezogen (Tee fiel auf 0 €
+  und verschwand). Jetzt eigene Minus-Zeilen; Laden an Eigenmarken erkannt
+  (enerBiO/Prokudent → Rossmann, Balea/dmBio → dm, …); ISO-Datum; Preise
+  dürfen negativ sein (Coupon, Leergut).
 - **Regelmäßige Einkäufe ausblenden** (× pro Artikel, `data.regularHidden`),
   zählt dann auch nicht mehr für die Angebote.
 - Offen: ein Laden in der Nähe, dessen Name Mareike entfallen ist („Name
   ist Programm“?), Schulferien RLP automatisch.
-- 98 Tests grün, im Browser (Handy + Desktop) geprüft.
+- 105 Tests grün, im Browser (Handy + Desktop) geprüft.
 - PR #1 am 11.10. nach main übernommen (Deploy).
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.

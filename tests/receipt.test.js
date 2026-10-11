@@ -202,7 +202,96 @@ test('Nachrechnen: zu viel, zu wenig, verdaechtige doppelte Zeile', async () => 
   assert.equal(over.status, 'over');
   assert.equal(over.diff, 199);
   assert.equal(over.suspects[0], 2); // erste Zeile von Foto 2, gleich wie davor
-  assert.deepEqual(checkSum(items, 716), { status: 'ok', sum: 716, diff: 0, suspects: [] });
+  assert.deepEqual(checkSum(items, 716), { status: 'ok', sum: 716, diff: 0, suspects: [], missingPrices: 0 });
   assert.equal(checkSum(items, 800).status, 'missing');
   assert.equal(checkSum(items, null).status, 'unknown');
+});
+
+// Nachgebaut nach einem echten langen ALDI-Bon in drei Fotos: grosse
+// Ueberlappung, angeschnittene erste Zeilen, Sofortstorno ueber die
+// Fotogrenze, Artikelzeilen ohne gelesenen Preis.
+test('Langer Bon in drei Fotos: Storno, lange Ueberlappung, fehlende Preise', async () => {
+  const { parseParts, checkSum } = await import('../src/receipt.js');
+  const foto1 = `ALDI SÜD
+Koblenzer Straße
+444704 XXL Pommes Frit. 2,99 A
+485282 Haferdrink B. 1l 1,25 B
+720743 Veganer Aufschnitt
+589737 Bio NL Reibekaese 1,89 A
+473301 Flammkuchenboden 2,99 A
+319562 Bio-Landbrötchen 1,29 A
+543670 Butternut BIO NL 3,03 A
+Sofortstorno
+BIO NL`;
+  const foto2 = `485282 Hat ar AUTSCHN{ ++
+985005 Vega? Reibekaese
+473301 F1ammkuchenboden 2,99 A
+319562 Bio-Landbrötchen 1,29 A
+543670 Butternut BIO NL 3,03 A
+1,522 kg x 1,99 EUR/kg
+Sofortstorno
+=     543670 Butternut BIO NL
+774986 Kürbis Mix lose 3,03 A
+185021 Light Chips 1,39 A
+720743 Veganer Aufschnitt 1,19 A`;
+  const foto3 = `774986 Kürbis Mix )ose 3,03 A
+185021 Light Chips 1,39 A
+720743 Veganer Aufschnitt 1,19 A
+520576 Bio Knödel 3,29 A
+Bezahlung AMERICAN EXPRESS
+21,50 EUR`;
+  const r = parseParts([foto1, foto2, foto3]);
+  assert.deepEqual(r.items.map((i) => i.name), [
+    'XXL Pommes Frit.', 'Haferdrink B. 1l', 'Veganer Aufschnitt', 'Bio NL Reibekaese', 'Flammkuchenboden', 'Bio-Landbrötchen',
+    'Kürbis Mix lose', 'Light Chips', 'Veganer Aufschnitt', 'Bio Knödel',
+  ]);
+  // "Veganer Aufschnitt" auf Foto 1 ohne Preis -> bleibt in der Liste, Preis fehlt.
+  assert.equal(r.items[2].missingPrice, true);
+  assert.equal(r.printedTotal, 2150);
+  const c = checkSum(r.items, r.printedTotal);
+  assert.equal(c.status, 'missing');
+  assert.equal(c.missingPrices, 1);
+});
+
+test('Storno auf einem einzelnen Bon entfernt den Artikel ganz', () => {
+  const r = parseReceipt(`ALDI SÜD
+543670 Butternut BIO NL 3,03 A
+Sofortstorno
+- 543670 Butternut BIO NL -3,03 A
+774986 Kürbis Mix lose 3,03 A
+Betrag 3,03 EUR`);
+  assert.deepEqual(r.items.map((i) => [i.name, i.amount]), [['Kürbis Mix lose', 303]]);
+  assert.equal(r.printedTotal, 303);
+});
+
+// Nachgebaut nach einem digitalen Rossmann-Bon (Screenshot aus der App):
+// kein Ladenname, Coupons in eigenem Block nach der Zwischensumme, Datum
+// nur im ISO-Format.
+test('Digitaler Bon: Coupon-Block wird zu Minus-Zeilen, Laden an Eigenmarke erkannt', () => {
+  const r = parseReceipt(`13:55
+Digitaler Bon 000
+Du hast insgesamt €1,00 gespart!
+4068134181497 ENERBIO BRENNNESSE €1,59 B
+4068134036193 PROKUDENT BRUSH-ST €1,99 A
+5060229014122 PUKKA DREI MINZE T €3,99 B
+Zwischensumme: €7,57
+Deine Coupon-Ersparnis heute:
+9823284955580 Coupon 20% Pukka €0,80
+9823219992277 10% COUPONAKTION €0,20
+Summe: €6,57
+American Express €6,57
+Start: 2026-10-07T12:04:26+02:00`);
+  assert.equal(r.shop, 'Rossmann');
+  assert.equal(r.date, '2026-10-07');
+  assert.equal(r.printedTotal, 657);
+  assert.deepEqual(r.items.map((i) => [i.name, i.amount]), [
+    ['Enerbio Brennnesse', 159], ['Prokudent Brush-St', 199], ['Pukka Drei Minze T', 399],
+    ['Coupon 20% Pukka', -80], ['10% Couponaktion', -20],
+  ]);
+  assert.equal(r.sum, 657);
+});
+
+test('Rabatt direkt unter dem Artikel wird weiter abgezogen', () => {
+  const r = parseReceipt('REWE\nTOMATEN 2,49 B\nRabatt Tomaten -0,50\nSUMME 1,99');
+  assert.deepEqual(r.items.map((i) => [i.name, i.amount]), [['Tomaten', 199]]);
 });
