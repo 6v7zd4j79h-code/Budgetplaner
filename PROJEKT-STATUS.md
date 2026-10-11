@@ -171,11 +171,25 @@ in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
   (`moveEntry` in `store.js`, z. B. privat → Gemeinschaftskonto; Kategorie
   über den Namen, Konto fällt weg; bei passwortgeschütztem Ziel im lokalen
   Modus Hinweis statt Verschieben).
+- **Bon nachrechnen** (`parseParts`, `checkSum` in `src/receipt.js`): Fotos
+  einzeln lesen, am Übergang gleiche Zeile (gleicher Preis, ähnlicher oder
+  angeschnittener Name) nur einmal; Gegenprobe mit der Bon-Summe (echte
+  Doppelkäufe bleiben). Prüfen zeigt „geht auf“ / „X zu viel“ mit Vorschlag
+  und Ein-Tipp-Korrektur / „X fehlen“; Foto-Grenzen in der Liste;
+  Rückfrage beim Speichern. Auslöser: langer ALDI-Bon mit doppelten Zeilen.
+- **Spezielle Ernährung pro Artikel** (`item.diet`: Protein/Sport, Low Carb,
+  kalorienarm, zuckerfrei, glutenfrei, laktosefrei, vegan, Diät), nicht
+  „unnötig“; Vorschlag aus dem Namen, wird pro Artikel gemerkt
+  (`data.dietRules`); Karte „🥗 Spezielle Ernährung“.
+- **Eigene Kategorie pro Artikel** (`item.lineId`): z. B. Tee bei dm →
+  Lebensmittel, Schlafanzug bei ALDI → Kleidung; `expenseActuals` teilt
+  die Buchung im Budget entsprechend auf.
+- Artikel-Optionen eingeklappt („＋ mehr“), gesetzte Haken als Chips.
 - **Regelmäßige Einkäufe ausblenden** (× pro Artikel, `data.regularHidden`),
   zählt dann auch nicht mehr für die Angebote.
 - Offen: ein Laden in der Nähe, dessen Name Mareike entfallen ist („Name
   ist Programm“?), Schulferien RLP automatisch.
-- 93 Tests grün, im Browser (Handy + Desktop) geprüft.
+- 98 Tests grün, im Browser (Handy + Desktop) geprüft.
 - PR #1 am 11.10. nach main übernommen (Deploy).
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.

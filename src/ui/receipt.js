@@ -5,23 +5,34 @@
 import { newId } from '../budget.js';
 import { addMonths, formatDay, todayISO } from '../dates.js';
 import { parseMoney } from '../money.js';
-import { joinParts, parseReceipt } from '../receipt.js';
+import { checkSum, joinParts, parseParts } from '../receipt.js';
 import { isPdf } from '../pdf-lines.js';
 import { update } from '../store.js';
 import { itemKey, rememberedWaste } from '../waste.js';
 import { esc, eur, itemTags, moneyInput } from './dom.js';
-import { peopleOf } from '../spending.js';
+import { guessDiet, peopleOf } from '../spending.js';
 
 let scan = null;
 // Von aussen gesetzt, wenn der Scan zu einer bestimmten Buchung gehoert.
 let presetEntryId = null;
+// Artikel, deren Haken gerade aufgeklappt sind.
+const openTags = new Set();
 
 export function startFor(entryId) {
   presetEntryId = entryId;
   scan = null;
 }
 
+// Was die App ueber einen Artikel schon weiss: unnoetig? spezielle Ernaehrung?
+function withMemory(item, data) {
+  const key = itemKey(item.name);
+  const rules = data.dietRules || {};
+  const diet = Object.prototype.hasOwnProperty.call(rules, key) ? rules[key] : guessDiet(item.name);
+  return { ...item, waste: !diet && rememberedWaste(data.wasteRules, item.name) === true, ...(diet ? { diet } : {}) };
+}
+
 function reset() {
+  openTags.clear();
   scan = { phase: 'pick', progress: 0, status: '', imageUrl: null, error: null, parts: [] };
 }
 
@@ -69,6 +80,27 @@ const thumb = (part, i) => (part.imageUrl
   ? `<img class="receipt-thumb" src="${part.imageUrl}" alt="Foto ${i + 1} des Kassenbons">`
   : '<div class="receipt-thumb pdf-thumb" aria-label="PDF-Kassenbon">📄 PDF</div>');
 
+// Nachrechnen: Ergeben die Artikel die Summe auf dem Bon?
+function sumCheck(r, { actions = true } = {}) {
+  const c = checkSum(r.items, r.printedTotal);
+  if (c.status === 'unknown') {
+    return `<div class="sum-check warn">⚠ Keine Summe auf dem Bon gefunden – bitte oben „Summe laut Bon“ eintragen, dann rechnet die App nach.</div>`;
+  }
+  if (c.status === 'ok') {
+    return `<div class="sum-check ok">✓ Nachgerechnet: Die Artikel ergeben genau die Bon-Summe von ${eur(r.printedTotal)}.</div>`;
+  }
+  if (c.status === 'missing') {
+    return `<div class="sum-check warn">⚠ Es fehlen <strong>${eur(-c.diff)}</strong>: Die Artikel ergeben ${eur(c.sum)}, der Bon sagt ${eur(r.printedTotal)}.
+      Vermutlich wurde eine Zeile nicht oder falsch gelesen – bitte mit dem Bon vergleichen und mit „+ Artikel“ nachtragen oder einen Preis korrigieren.</div>`;
+  }
+  const suspect = c.suspects[0];
+  return `<div class="sum-check warn">⚠ <strong>${eur(c.diff)} zu viel</strong>: Die Artikel ergeben ${eur(c.sum)}, der Bon sagt ${eur(r.printedTotal)}.
+    ${suspect != null
+      ? `„${esc(r.items[suspect].name)}“ (${eur(r.items[suspect].amount)}) steht wahrscheinlich doppelt – z. B. am Foto-Übergang.
+        ${actions ? `<button type="button" class="btn" data-action="receipt-item-del" data-key="${suspect}">„${esc(r.items[suspect].name)}“ einmal entfernen</button>` : ''}`
+      : 'Vermutlich steht eine Zeile doppelt oder ein Preis ist falsch gelesen – bitte mit dem Bon vergleichen.'}</div>`;
+}
+
 // Nach jedem Foto: Geht der Bon weiter oder ist er vollstaendig?
 function renderMore() {
   const r = scan.result;
@@ -77,13 +109,14 @@ function renderMore() {
   <article class="card">
     <h2>${n === 1 ? 'Foto gelesen' : `${n} Fotos gelesen`}</h2>
     <div class="receipt-parts">${scan.parts.map((p, i) => `<figure>${thumb(p, i)}<figcaption class="muted small">Teil ${i + 1}</figcaption></figure>`).join('')}</div>
-    <p>${r.items.length} Artikel erkannt${r.total ? ` · <strong>Summe ${eur(r.total)} gefunden</strong> – der Bon ist wahrscheinlich vollständig` : ' · noch keine Summe gefunden'}.</p>
+    <p>${r.items.length} Artikel erkannt${r.printedTotal ? ` · <strong>Summe ${eur(r.printedTotal)} gefunden</strong> – der Bon ist wahrscheinlich vollständig` : ' · noch keine Summe gefunden'}.</p>
+    ${r.printedTotal ? sumCheck(r, { actions: false }) : ''}
     ${scan.error ? `<p class="form-error">${esc(scan.error)}</p>` : ''}
     <h3 class="sub-h">Geht der Bon noch weiter?</h3>
     <p class="hint">Fotografiere das nächste Stück von oben nach unten. Es darf ruhig ein, zwei Zeilen überlappen – doppelte Zeilen zählt die App nur einmal.</p>
     ${photoButtons(false)}
     <div class="btn-row more-done">
-      <button type="button" class="btn ${r.total ? 'primary' : ''}" data-action="receipt-complete">✓ Bon ist vollständig – weiter</button>
+      <button type="button" class="btn ${r.printedTotal ? 'primary' : ''}" data-action="receipt-complete">✓ Bon ist vollständig – weiter</button>
       <button type="button" class="btn ghost" data-action="receipt-drop-part">Letztes Foto verwerfen</button>
     </div>
   </article>`;
@@ -106,7 +139,7 @@ function renderReview(data) {
   const people = peopleOf(data);
   const sum = r.items.reduce((s, i) => s + i.amount, 0);
   const waste = r.items.reduce((s, i) => s + (i.waste ? i.amount : 0), 0);
-  const diff = (r.total || 0) - sum;
+  const suspects = checkSum(r.items, r.printedTotal).suspects.slice(0, 1);
   const matches = candidates(data.log, r.total, r.date);
   if (scan.target === undefined) scan.target = presetEntryId || matches[0]?.id || 'new';
   const preset = presetEntryId ? data.log.find((e) => e.id === presetEntryId) : null;
@@ -138,21 +171,21 @@ function renderReview(data) {
     ${targetEntry?.items?.length ? `<label class="waste-toggle append-toggle"><input type="checkbox" data-action="receipt-append" ${scan.append ? 'checked' : ''}>
       <span>Die Buchung hat schon ${targetEntry.items.length} Artikel. Neue Artikel <strong>dazunehmen</strong> (z. B. zweiter Teil des Bons) statt ersetzen</span></label>` : ''}
 
-    <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig · 🏷 im Angebot · 📦 auf Vorrat · 🎁 Geschenk · für wen</span></h3>
-    ${r.items.length ? '' : '<p class="hint">Keine Artikel erkannt. Trag sie unten selbst ein oder versuch ein schärferes Foto.</p>'}
+    <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig · 🏷 Angebot · 📦 Vorrat · 🎁 Geschenk · für wen · 🥗 Ernährung · 📂 eigene Kategorie</span></h3>
+    ${r.items.length ? sumCheck(r) : '<p class="hint">Keine Artikel erkannt. Trag sie unten selbst ein oder versuch ein schärferes Foto.</p>'}
     <ul class="item-list receipt-items">${r.items.map((it, i) => `
-      <li class="item${it.waste ? ' is-waste' : ''}">
+      ${i > 0 && it.part != null && r.items[i - 1].part != null && it.part !== r.items[i - 1].part ? `<li class="part-break">Foto ${it.part + 1}</li>` : ''}
+      <li class="item${it.waste ? ' is-waste' : ''}${suspects.includes(i) ? ' is-suspect' : ''}">
         <input type="checkbox" class="waste-check" data-action="receipt-item-waste" data-key="${i}" ${it.waste ? 'checked' : ''} aria-label="${esc(it.name)} unnötig">
         <input type="text" class="item-name-input" data-action="receipt-item-name" data-key="${i}" value="${esc(it.name)}" aria-label="Artikel">
         ${moneyInput({ action: 'receipt-item-amount', key: String(i), value: it.amount, label: `Preis ${it.name}` })}
         <button type="button" class="del" data-action="receipt-item-del" data-key="${i}" aria-label="${esc(it.name)} entfernen">×</button>
-        ${itemTags('receipt-item-tag', String(i), it, people)}
+        ${itemTags('receipt-item-tag', String(i), it, people, lines, openTags.has(i))}
       </li>`).join('')}</ul>
     <button type="button" class="btn ghost" data-action="receipt-item-add">+ Artikel</button>
 
     <div class="receipt-sums">
       <span>Artikel ${eur(sum)}${r.total ? ` von ${eur(r.total)}` : ''}</span>
-      ${r.total && diff !== 0 ? `<span class="${diff < 0 ? 'neg' : 'muted'}">${diff > 0 ? `${eur(diff)} nicht zugeordnet – zählt als nötig` : `Artikel sind ${eur(-diff)} mehr als die Summe – Preise prüfen`}</span>` : ''}
       <strong class="waste-sum">Unnötig: ${eur(waste)}</strong>
     </div>
     <p class="form-error" id="receiptError" hidden></p>
@@ -208,15 +241,15 @@ export const actions = {
       parts.push({ text, imageUrl });
       scan.text = joinParts(parts.map((part) => part.text));
       scan.imageUrl = parts.find((part) => part.imageUrl)?.imageUrl || null;
-      const parsed = parseReceipt(scan.text);
+      const parsed = parseParts(parts.map((part) => part.text));
       scan.result = {
         ...parsed,
-        items: parsed.items.map((it) => ({ ...it, waste: rememberedWaste(ctx.data.wasteRules, it.name) === true })),
+        items: parsed.items.map((it) => withMemory(it, ctx.data)),
       };
       const lines = expenseLines(ctx.data, parsed.date);
       scan.lineId = (lines.find((l) => /lebensmittel/i.test(l.name)) || lines[0])?.id;
       // Ein digitaler Bon ist vollstaendig - direkt zum Pruefen.
-      scan.phase = pdf && parts.length === 1 && parsed.total ? 'review' : 'more';
+      scan.phase = pdf && parts.length === 1 && parsed.printedTotal ? 'review' : 'more';
     } catch (error) {
       if (imageUrl) URL.revokeObjectURL(imageUrl);
       scan.imageUrl = parts[0]?.imageUrl || null;
@@ -229,7 +262,10 @@ export const actions = {
   },
   'receipt-field'(el, _event, ctx) {
     const field = el.dataset.key;
-    if (field === 'total') scan.result.total = parseMoney(el.value);
+    if (field === 'total') {
+      scan.result.total = parseMoney(el.value);
+      scan.result.printedTotal = scan.result.total;
+    }
     else if (field === 'lineId') scan.lineId = el.value;
     else scan.result[field] = el.value.trim();
     if (field === 'total' || field === 'date') scan.target = undefined;
@@ -247,6 +283,21 @@ export const actions = {
     const [index, tag] = el.dataset.key.split(':');
     const item = scan.result.items[Number(index)];
     item[tag] = !item[tag];
+    ctx.rerender();
+  },
+  'receipt-item-tag-more'(el, _event, ctx) {
+    const i = Number(el.dataset.key);
+    if (openTags.has(i)) openTags.delete(i); else openTags.add(i);
+    ctx.rerender();
+  },
+  'receipt-item-tag-diet'(el, _event, ctx) {
+    const item = scan.result.items[Number(el.dataset.key)];
+    item.diet = el.value || undefined;
+    if (item.diet) item.waste = false; // bewusst gekauft, nicht unnoetig
+    ctx.rerender();
+  },
+  'receipt-item-tag-line'(el, _event, ctx) {
+    scan.result.items[Number(el.dataset.key)].lineId = el.value || undefined;
     ctx.rerender();
   },
   'receipt-item-tag-for'(el, _event, ctx) {
@@ -270,6 +321,7 @@ export const actions = {
   },
   'receipt-item-del'(el, _event, ctx) {
     scan.result.items.splice(Number(el.dataset.key), 1);
+    openTags.clear();
     ctx.rerender();
   },
   'receipt-item-add'(_el, _event, ctx) {
@@ -278,7 +330,7 @@ export const actions = {
   },
   'receipt-save'(_el, _event, ctx) {
     const r = scan.result;
-    const items = r.items.filter((i) => i.name && i.amount > 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}), ...(i.gift ? { gift: true } : {}), ...(i.forWhom ? { forWhom: i.forWhom } : {}) }));
+    const items = r.items.filter((i) => i.name && i.amount > 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}), ...(i.gift ? { gift: true } : {}), ...(i.forWhom ? { forWhom: i.forWhom } : {}), ...(i.diet ? { diet: i.diet } : {}), ...(i.lineId && i.lineId !== scan.lineId ? { lineId: i.lineId } : {}) }));
     const total = r.total || items.reduce((s, i) => s + i.amount, 0);
     if (!total) {
       const error = document.getElementById('receiptError');
@@ -286,6 +338,9 @@ export const actions = {
       error.hidden = false;
       return;
     }
+    const check = checkSum(items, r.printedTotal);
+    if ((check.status === 'over' || check.status === 'missing')
+      && !window.confirm(`Die Artikel ergeben ${eur(check.sum)}, auf dem Bon stehen ${eur(r.printedTotal)} (${check.diff > 0 ? `${eur(check.diff)} zu viel` : `${eur(-check.diff)} fehlen`}). Trotzdem speichern?`)) return;
     // Versehentlich zweimal eingelesen? Gleicher Tag, gleiche Summe, schon mit Artikeln.
     if (scan.target === 'new') {
       const date = r.date || todayISO();
@@ -295,6 +350,9 @@ export const actions = {
     update((data) => {
       data.wasteRules = data.wasteRules || {};
       for (const item of items) data.wasteRules[itemKey(item.name)] = item.waste;
+      data.dietRules = data.dietRules || {};
+      // Auch "keine Ernaehrung" merken, damit ein abgewaehlter Vorschlag nicht wiederkommt.
+      for (const item of items) data.dietRules[itemKey(item.name)] = item.diet || null;
       const existing = scan.target !== 'new' ? data.log.find((e) => e.id === scan.target) : null;
       if (existing) {
         // Zweiter Teil eines Bons: anhaengen. Sonst ersetzen, damit derselbe
@@ -320,8 +378,8 @@ export const actions = {
       reset();
     } else {
       scan.text = joinParts(scan.parts.map((p) => p.text));
-      const parsed = parseReceipt(scan.text);
-      scan.result = { ...parsed, items: parsed.items.map((it) => ({ ...it, waste: rememberedWaste(ctx.data.wasteRules, it.name) === true })) };
+      const parsed = parseParts(scan.parts.map((p) => p.text));
+      scan.result = { ...parsed, items: parsed.items.map((it) => withMemory(it, ctx.data)) };
       scan.imageUrl = scan.parts.find((p) => p.imageUrl)?.imageUrl || null;
     }
     ctx.rerender();

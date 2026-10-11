@@ -8,7 +8,7 @@ import { moveEntry, store, update } from '../store.js';
 import { esc, eur, forSelect, itemTags, moneyInput } from './dom.js';
 import { entryRest, entryWaste, itemKey, monthWaste, rememberedWaste } from '../waste.js';
 import { startFor } from './receipt.js';
-import { monthDeals, monthForWhom, monthGifts, peopleOf } from '../spending.js';
+import { monthDeals, monthDiet, monthForWhom, monthGifts, peopleOf } from '../spending.js';
 import { ALL, activeAccounts, accountsOf } from '../accounts.js';
 
 let lastLineId = null;
@@ -16,6 +16,7 @@ let lastAccountId = null;
 // Welche Buchung gerade aufgeklappt ist (Artikel bearbeiten).
 let openId = null;
 let editPeople = false;
+const openTags = new Set();
 let moveTarget = null;
 let moveError = null;
 
@@ -49,14 +50,14 @@ function itemsPanel(e, people, lines, accounts) {
   return `<div class="items">
     ${editPanel(e, lines, accounts)}
     <h3 class="sub-h">Artikel</h3>
-    ${items.length ? `<p class="item-legend">Haken = unnötig · 🏷 im Angebot · 📦 auf Vorrat · 🎁 Geschenk · für wen · Name und Preis lassen sich korrigieren</p><ul class="item-list receipt-items">${items.map((it) => `
+    ${items.length ? `<p class="item-legend">Haken = unnötig · 🏷 Angebot · 📦 Vorrat · 🎁 Geschenk · für wen · 🥗 Ernährung · 📂 eigene Kategorie (z. B. Kleidung im Lebensmitteleinkauf) · Name und Preis lassen sich korrigieren</p><ul class="item-list receipt-items">${items.map((it) => `
       <li class="item${it.waste ? ' is-waste' : ''}">
         <input type="checkbox" class="waste-check" data-action="item-waste" data-key="${esc(e.id)}:${esc(it.id)}" ${it.waste ? 'checked' : ''}
           aria-label="${esc(it.name)} unnötig" title="unnötig">
         <input type="text" class="item-name-input" data-action="item-name" data-key="${esc(e.id)}:${esc(it.id)}" value="${esc(it.name)}" aria-label="Artikel">
         ${moneyInput({ action: 'item-amount', key: `${e.id}:${it.id}`, value: it.amount, label: `Preis ${it.name}` })}
         <button type="button" class="del" data-action="item-del" data-key="${esc(e.id)}:${esc(it.id)}" aria-label="${esc(it.name)} entfernen">×</button>
-        ${itemTags('item-tag', `${e.id}:${it.id}`, it, people)}
+        ${itemTags('item-tag', `${e.id}:${it.id}`, it, people, lines, openTags.has(`${e.id}:${it.id}`))}
       </li>`).join('')}</ul>` : '<p class="hint">Trag die Artikel ein, die du einordnen möchtest – den Rest zählt die App als nötig.</p>'}
     <form class="item-form" data-action="item-add" data-key="${esc(e.id)}">
       <input type="text" name="name" placeholder="Artikel, z. B. Gewürzmischung" aria-label="Artikel" autocomplete="off" data-action="item-hint" data-key="${esc(e.id)}" required>
@@ -88,6 +89,16 @@ function forWhomCard(f, people) {
         <input type="text" name="person" placeholder="z. B. Name eines Kindes" aria-label="Person oder Gruppe" autocomplete="off" required>
         <button type="submit" class="btn">+ Hinzufügen</button>
       </form>` : ''}
+  </article>`;
+}
+
+function dietCard(d) {
+  if (!d.items.length) return '';
+  return `<article class="card">
+    <header class="section-head"><h2>🥗 Spezielle Ernährung</h2><span class="section-sum">${eur(d.total)}</span></header>
+    <ul class="mini">${d.rows.map((r) => `<li><span>${esc(r.name)}</span><span>${eur(r.amount)}</span></li>`).join('')}</ul>
+    <p class="muted small">${d.items.slice(0, 5).map((i) => `${esc(i.name)} (${eur(i.amount)})`).join(' · ')}</p>
+    <p class="hint">Bewusst gekauft – zählt nicht als unnötig.</p>
   </article>`;
 }
 
@@ -216,6 +227,7 @@ export function render({ data, key, account }) {
   ${forWhomCard(monthForWhom(data.log, key, people), people)}
   ${dealsCard(monthDeals(data.log, key))}
   ${giftsCard(monthGifts(data.log, key))}
+  ${dietCard(monthDiet(data.log, key))}
 
   <article class="card">
     <header class="section-head"><h2>Buchungen</h2><span class="section-sum">${eur(total)}</span></header>
@@ -310,6 +322,35 @@ export const actions = {
     update((data) => {
       const entry = data.log.find((e) => e.id === el.dataset.key);
       if (entry) entry.gift = !entry.gift;
+    });
+  },
+  'item-tag-more'(el, _event, ctx) {
+    const key = el.dataset.key;
+    if (openTags.has(key)) openTags.delete(key); else openTags.add(key);
+    ctx.rerender();
+  },
+  'item-tag-diet'(el) {
+    const [entryId, itemId] = el.dataset.key.split(':');
+    update((data) => {
+      const item = data.log.find((e) => e.id === entryId)?.items?.find((i) => i.id === itemId);
+      if (!item) return;
+      if (el.value) {
+        item.diet = el.value;
+        item.waste = false; // bewusst gekauft, nicht unnoetig
+      } else {
+        delete item.diet;
+      }
+      data.dietRules = data.dietRules || {};
+      data.dietRules[itemKey(item.name)] = item.diet || null;
+    });
+  },
+  'item-tag-line'(el) {
+    const [entryId, itemId] = el.dataset.key.split(':');
+    update((data) => {
+      const item = data.log.find((e) => e.id === entryId)?.items?.find((i) => i.id === itemId);
+      if (!item) return;
+      if (el.value) item.lineId = el.value;
+      else delete item.lineId;
     });
   },
   'item-tag-for'(el) {

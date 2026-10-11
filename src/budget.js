@@ -91,9 +91,21 @@ export function expenseActuals(month, log, key) {
   const known = new Set(month.lines.expenses.map((l) => l.id));
   const byLine = {};
   let uncategorized = 0;
+  const add = (lineId, amount) => {
+    if (known.has(lineId)) byLine[lineId] = (byLine[lineId] || 0) + amount;
+    else uncategorized += amount;
+  };
   for (const entry of logForMonth(log, key)) {
-    if (known.has(entry.lineId)) byLine[entry.lineId] = (byLine[entry.lineId] || 0) + entry.amount;
-    else uncategorized += entry.amount;
+    // Artikel mit eigener Kategorie (der Schlafanzug im ALDI-Einkauf) zaehlen
+    // dort, der Rest der Buchung in der Kategorie der Buchung.
+    let rest = entry.amount;
+    for (const item of entry.items || []) {
+      if (item.lineId && item.lineId !== entry.lineId && item.amount > 0) {
+        add(item.lineId, item.amount);
+        rest -= item.amount;
+      }
+    }
+    if (rest !== 0) add(entry.lineId, rest);
   }
   return { byLine, uncategorized };
 }

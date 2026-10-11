@@ -940,3 +940,12 @@ input[type=month] { min-height: 40px; }
 .pdf-thumb { display: grid; place-items: center; aspect-ratio: 3 / 4; font-size: 0.9rem; color: var(--muted); }
 .receipt-head.no-thumb { grid-template-columns: minmax(0, 1fr); }
 .receipt-head.no-thumb .receipt-fields { grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+
+.sum-check { padding: 10px 12px; border-radius: 10px; font-size: 0.92rem; margin: 6px 0 10px; line-height: 1.45; }
+.sum-check .btn { display: flex; margin-top: 8px; }
+.sum-check.ok { background: color-mix(in srgb, var(--pos) 14%, transparent); color: var(--pos); font-weight: 600; }
+.sum-check.warn { background: color-mix(in srgb, var(--neg) 12%, transparent); color: var(--text); border: 1px solid color-mix(in srgb, var(--neg) 40%, transparent); }
+.part-break { list-style: none; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; border-top: 2px dashed var(--border); padding-top: 6px; margin-top: 4px; }
+.item.is-suspect { outline: 2px solid var(--neg); outline-offset: 3px; border-radius: 8px; }
+.item-tags .tag.more { border-style: dashed; }
+.item-tags .pill.small { align-self: center; }

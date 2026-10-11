@@ -161,3 +161,48 @@ test('Rechnung als PDF: Endbetrag, Tausenderpunkt, Zwischensummen', () => {
     ['Versand', 1990],
   ]);
 });
+
+test('Mehrere Fotos: angeschnittene Zeile am Uebergang zaehlt nur einmal, Summe geht auf', async () => {
+  const { parseParts, checkSum } = await import('../src/receipt.js');
+  const foto1 = `ALDI SÜD
+Koblenzer Str. 1
+MILCH 1,19 A
+BUTTER 2,29 A
+CASHEWKERNE 3,49 A
+NUESSE GEMISCHT 1,99 A`;
+  // Oberste Zeile angeschnitten und anders gelesen.
+  const foto2 = `ESSE GEMISCHT 1,99 A
+BANANEN 1,59 A
+SUMME EUR 10,55`;
+  const r = parseParts([foto1, foto2]);
+  assert.equal(r.shop, 'ALDI SÜD');
+  assert.deepEqual(r.items.map((i) => [i.name, i.part]), [
+    ['Milch', 0], ['Butter', 0], ['Cashewkerne', 0], ['Nuesse Gemischt', 0], ['Bananen', 1],
+  ]);
+  assert.equal(r.total, 1055);
+  assert.equal(checkSum(r.items, r.total).status, 'ok');
+});
+
+test('Mehrere Fotos: zweimal dieselben Nuesse wirklich gekauft - Summe entscheidet', async () => {
+  const { parseParts } = await import('../src/receipt.js');
+  const r = parseParts(['ALDI SÜD\nMILCH 1,19 A\nNUESSE 1,99 A', 'NUESSE 1,99 A\nNUESSE 1,99 A\nSUMME 5,17']);
+  assert.deepEqual(r.items.map((i) => i.name), ['Milch', 'Nuesse', 'Nuesse']);
+  assert.equal(r.sum, 517);
+});
+
+test('Nachrechnen: zu viel, zu wenig, verdaechtige doppelte Zeile', async () => {
+  const { checkSum } = await import('../src/receipt.js');
+  const items = [
+    { name: 'Milch', amount: 119, part: 0 },
+    { name: 'Nuesse', amount: 199, part: 0 },
+    { name: 'Nüsse', amount: 199, part: 1 },
+    { name: 'Zahnpasta', amount: 199, part: 1 },
+  ];
+  const over = checkSum(items, 517);
+  assert.equal(over.status, 'over');
+  assert.equal(over.diff, 199);
+  assert.equal(over.suspects[0], 2); // erste Zeile von Foto 2, gleich wie davor
+  assert.deepEqual(checkSum(items, 716), { status: 'ok', sum: 716, diff: 0, suspects: [] });
+  assert.equal(checkSum(items, 800).status, 'missing');
+  assert.equal(checkSum(items, null).status, 'unknown');
+});

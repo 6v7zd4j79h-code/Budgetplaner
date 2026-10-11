@@ -67,3 +67,40 @@ export function monthGifts(log, key) {
   }
   return { total: items.reduce((s, i) => s + i.amount, 0), items: items.sort((a, b) => b.amount - a.amount) };
 }
+
+// Spezielle Ernaehrung: kein "unnoetig", sondern bewusst gekauft
+// (Proteinriegel statt Schokolade, glutenfrei, ...). item.diet = id.
+export const DIETS = [
+  { id: 'protein', name: 'Protein / Sport', match: /protein|whey|eiwei(ß|ss)/i },
+  { id: 'lowcarb', name: 'Low Carb', match: /low\s*-?carb|keto/i },
+  { id: 'kalorienarm', name: 'Kalorienarm', match: /kalorienarm|kalorienreduziert/i },
+  { id: 'zuckerfrei', name: 'Zuckerfrei', match: /zuckerfrei|ohne zucker|\bzero\b/i },
+  { id: 'glutenfrei', name: 'Glutenfrei', match: /glutenfrei|gluten-?free|ohne gluten/i },
+  { id: 'laktosefrei', name: 'Laktosefrei', match: /laktosefrei|lactosefrei|lactose-?free/i },
+  { id: 'vegan', name: 'Vegan / vegetarisch', match: /vegan|vegetar|veggie/i },
+  { id: 'diaet', name: 'Diät / Sonstiges', match: /^$/ },
+];
+
+export const dietName = (id) => DIETS.find((d) => d.id === id)?.name || '';
+
+// Vorschlag aus dem Artikelnamen ("Protein Riegel" -> protein).
+export function guessDiet(name) {
+  return DIETS.find((d) => d.match.test(String(name || '')))?.id || null;
+}
+
+export function monthDiet(log, key) {
+  const byDiet = new Map();
+  const items = [];
+  for (const e of logForMonth(log, key)) {
+    for (const item of e.items || []) {
+      if (!item.diet) continue;
+      byDiet.set(item.diet, (byDiet.get(item.diet) || 0) + item.amount);
+      items.push({ name: item.name, amount: item.amount, diet: item.diet, shop: e.note || '' });
+    }
+  }
+  return {
+    total: items.reduce((s, i) => s + i.amount, 0),
+    rows: [...byDiet].map(([diet, amount]) => ({ diet, name: dietName(diet), amount })).sort((a, b) => b.amount - a.amount),
+    items: items.sort((a, b) => b.amount - a.amount),
+  };
+}
