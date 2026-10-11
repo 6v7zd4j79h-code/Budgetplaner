@@ -89,12 +89,15 @@ function sumCheck(r, { actions = true } = {}) {
   if (c.status === 'ok') {
     return `<div class="sum-check ok">✓ Nachgerechnet: Die Artikel ergeben genau die Bon-Summe von ${eur(r.printedTotal)}.</div>`;
   }
+  const noPrice = c.missingPrices
+    ? `<p class="sum-missing">✏️ Bei <strong>${c.missingPrices} ${c.missingPrices === 1 ? 'Artikel' : 'Artikeln'}</strong> konnte der Preis nicht gelesen werden (rot markiert) – bitte vom Bon abschreiben.</p>`
+    : '';
   if (c.status === 'missing') {
-    return `<div class="sum-check warn">⚠ Es fehlen <strong>${eur(-c.diff)}</strong>: Die Artikel ergeben ${eur(c.sum)}, der Bon sagt ${eur(r.printedTotal)}.
+    return `<div class="sum-check warn">${noPrice}⚠ Es fehlen <strong>${eur(-c.diff)}</strong>: Die Artikel ergeben ${eur(c.sum)}, der Bon sagt ${eur(r.printedTotal)}.
       Vermutlich wurde eine Zeile nicht oder falsch gelesen – bitte mit dem Bon vergleichen und mit „+ Artikel“ nachtragen oder einen Preis korrigieren.</div>`;
   }
   const suspect = c.suspects[0];
-  return `<div class="sum-check warn">⚠ <strong>${eur(c.diff)} zu viel</strong>: Die Artikel ergeben ${eur(c.sum)}, der Bon sagt ${eur(r.printedTotal)}.
+  return `<div class="sum-check warn">${noPrice}⚠ <strong>${eur(c.diff)} zu viel</strong>: Die Artikel ergeben ${eur(c.sum)}, der Bon sagt ${eur(r.printedTotal)}.
     ${suspect != null
       ? `„${esc(r.items[suspect].name)}“ (${eur(r.items[suspect].amount)}) steht wahrscheinlich doppelt – z. B. am Foto-Übergang.
         ${actions ? `<button type="button" class="btn" data-action="receipt-item-del" data-key="${suspect}">„${esc(r.items[suspect].name)}“ einmal entfernen</button>` : ''}`
@@ -175,10 +178,10 @@ function renderReview(data) {
     ${r.items.length ? sumCheck(r) : '<p class="hint">Keine Artikel erkannt. Trag sie unten selbst ein oder versuch ein schärferes Foto.</p>'}
     <ul class="item-list receipt-items">${r.items.map((it, i) => `
       ${i > 0 && it.part != null && r.items[i - 1].part != null && it.part !== r.items[i - 1].part ? `<li class="part-break">Foto ${it.part + 1}</li>` : ''}
-      <li class="item${it.waste ? ' is-waste' : ''}${suspects.includes(i) ? ' is-suspect' : ''}">
+      <li class="item${it.waste ? ' is-waste' : ''}${suspects.includes(i) ? ' is-suspect' : ''}${it.amount ? '' : ' is-missing'}">
         <input type="checkbox" class="waste-check" data-action="receipt-item-waste" data-key="${i}" ${it.waste ? 'checked' : ''} aria-label="${esc(it.name)} unnötig">
         <input type="text" class="item-name-input" data-action="receipt-item-name" data-key="${i}" value="${esc(it.name)}" aria-label="Artikel">
-        ${moneyInput({ action: 'receipt-item-amount', key: String(i), value: it.amount, label: `Preis ${it.name}` })}
+        ${moneyInput({ action: 'receipt-item-amount', key: String(i), value: it.amount || null, label: `Preis ${it.name}`, placeholder: it.amount ? '0' : 'Preis?' })}
         <button type="button" class="del" data-action="receipt-item-del" data-key="${i}" aria-label="${esc(it.name)} entfernen">×</button>
         ${itemTags('receipt-item-tag', String(i), it, people, lines, openTags.has(i))}
       </li>`).join('')}</ul>
@@ -316,7 +319,9 @@ export const actions = {
     ctx.rerender();
   },
   'receipt-item-amount'(el, _event, ctx) {
-    scan.result.items[Number(el.dataset.key)].amount = Math.max(0, parseMoney(el.value) ?? 0);
+    const item = scan.result.items[Number(el.dataset.key)];
+    item.amount = Math.max(0, parseMoney(el.value) ?? 0);
+    if (item.amount) delete item.missingPrice;
     ctx.rerender();
   },
   'receipt-item-del'(el, _event, ctx) {

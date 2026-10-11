@@ -202,7 +202,64 @@ test('Nachrechnen: zu viel, zu wenig, verdaechtige doppelte Zeile', async () => 
   assert.equal(over.status, 'over');
   assert.equal(over.diff, 199);
   assert.equal(over.suspects[0], 2); // erste Zeile von Foto 2, gleich wie davor
-  assert.deepEqual(checkSum(items, 716), { status: 'ok', sum: 716, diff: 0, suspects: [] });
+  assert.deepEqual(checkSum(items, 716), { status: 'ok', sum: 716, diff: 0, suspects: [], missingPrices: 0 });
   assert.equal(checkSum(items, 800).status, 'missing');
   assert.equal(checkSum(items, null).status, 'unknown');
+});
+
+// Nachgebaut nach einem echten langen ALDI-Bon in drei Fotos: grosse
+// Ueberlappung, angeschnittene erste Zeilen, Sofortstorno ueber die
+// Fotogrenze, Artikelzeilen ohne gelesenen Preis.
+test('Langer Bon in drei Fotos: Storno, lange Ueberlappung, fehlende Preise', async () => {
+  const { parseParts, checkSum } = await import('../src/receipt.js');
+  const foto1 = `ALDI SÜD
+Koblenzer Straße
+444704 XXL Pommes Frit. 2,99 A
+485282 Haferdrink B. 1l 1,25 B
+720743 Veganer Aufschnitt
+589737 Bio NL Reibekaese 1,89 A
+473301 Flammkuchenboden 2,99 A
+319562 Bio-Landbrötchen 1,29 A
+543670 Butternut BIO NL 3,03 A
+Sofortstorno
+BIO NL`;
+  const foto2 = `485282 Hat ar AUTSCHN{ ++
+985005 Vega? Reibekaese
+473301 F1ammkuchenboden 2,99 A
+319562 Bio-Landbrötchen 1,29 A
+543670 Butternut BIO NL 3,03 A
+1,522 kg x 1,99 EUR/kg
+Sofortstorno
+=     543670 Butternut BIO NL
+774986 Kürbis Mix lose 3,03 A
+185021 Light Chips 1,39 A
+720743 Veganer Aufschnitt 1,19 A`;
+  const foto3 = `774986 Kürbis Mix )ose 3,03 A
+185021 Light Chips 1,39 A
+720743 Veganer Aufschnitt 1,19 A
+520576 Bio Knödel 3,29 A
+Bezahlung AMERICAN EXPRESS
+21,50 EUR`;
+  const r = parseParts([foto1, foto2, foto3]);
+  assert.deepEqual(r.items.map((i) => i.name), [
+    'XXL Pommes Frit.', 'Haferdrink B. 1l', 'Veganer Aufschnitt', 'Bio NL Reibekaese', 'Flammkuchenboden', 'Bio-Landbrötchen',
+    'Kürbis Mix lose', 'Light Chips', 'Veganer Aufschnitt', 'Bio Knödel',
+  ]);
+  // "Veganer Aufschnitt" auf Foto 1 ohne Preis -> bleibt in der Liste, Preis fehlt.
+  assert.equal(r.items[2].missingPrice, true);
+  assert.equal(r.printedTotal, 2150);
+  const c = checkSum(r.items, r.printedTotal);
+  assert.equal(c.status, 'missing');
+  assert.equal(c.missingPrices, 1);
+});
+
+test('Storno auf einem einzelnen Bon entfernt den Artikel ganz', () => {
+  const r = parseReceipt(`ALDI SÜD
+543670 Butternut BIO NL 3,03 A
+Sofortstorno
+- 543670 Butternut BIO NL -3,03 A
+774986 Kürbis Mix lose 3,03 A
+Betrag 3,03 EUR`);
+  assert.deepEqual(r.items.map((i) => [i.name, i.amount]), [['Kürbis Mix lose', 303]]);
+  assert.equal(r.printedTotal, 303);
 });
