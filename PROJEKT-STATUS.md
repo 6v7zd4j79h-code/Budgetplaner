@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-10-11 (Cloud: regelmäßige Einkäufe, Anlässe, Angebote der Woche). Davor 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -104,6 +104,41 @@ Am 07.10. (Cloud-Sitzung):
   (`switchBudget` war in `src/ui/settings.js` nicht importiert). Im Browser
   geprüft. Umschalten im Kopf war nicht betroffen.
 - 54 Tests grün, Build läuft.
+
+Am 10./11.10. (Cloud-Sitzung, Branch `regelmaessige-einkaeufe`, **noch nicht
+in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
+- **Regelmäßige Einkäufe** (`src/shopping.js`, Seite über Ausgaben →
+  „🛒 Regelmäßige Einkäufe“): was laut Bon-Artikeln in 6 Monaten mind. zweimal
+  gekauft wurde, Rhythmus, Läden, letzter Preis; „woanders günstiger“-Hinweis.
+  Pfand/Tüten zählen nicht, Läden aus Bon und Kontoauszug werden vereinheitlicht.
+- **Anlässe** (`src/occasions.js`, Seite „Anlässe“): Geburtstage (jährlich),
+  Ferien/Zeiträume, Feiertage (Ostern berechnet, Nikolaus, Weihnachten,
+  Silvester; einzeln abschaltbar), je mit Vorlauf und Notiz („Kuchenzutaten“,
+  „Kinder mittags zu Hause“). Ab dem Vorlauf Karte „Bald steht an“ in der
+  Übersicht. Gespeichert im Budget (`data.occasions`, `data.holidaysOff`),
+  also verschlüsselt mit abgeglichen – echte Geburtstage NICHT ins Repo.
+- **Angebote der Woche** (`src/offers.js`, Seite „Angebote“, Karte in der
+  Übersicht): Merkliste aus Stammartikeln (🛒), Anlass-Notizen (🎂, z. B.
+  „Kuchenzutaten“ → Mehl, Zucker, Butter …) und eigenen Wörtern (⭐, optional
+  „nur Bio/Fairtrade“, z. B. Schokolade). Netlify-Funktion
+  `netlify/functions/offers.mjs` (Logik `server/offers-core.js`) fragt
+  **marktguru.de** (inoffizielle Schnittstelle, Schlüssel von der Startseite)
+  nach PLZ + Suchwort, Zwischenspeicher 6 h in Netlify Blobs. Filter in der
+  App: gewählte Läden, Bio bevorzugen/nur Bio, Ausschlusswörter, Vergleich
+  mit dem üblichen Bon-Preis. Prüft einmal pro Kalenderwoche automatisch beim
+  Öffnen; Ergebnis nur im localStorage. Einstellungen in `data.offerSettings`.
+  Mareikes Wunsch: PLZ 56759 (Kaisersesch = ALDI SÜD), Läden ALDI SÜD, Lidl,
+  EDEKA, REWE, Penny, Netto, Kaufland, HIT, Globus, Rossmann, dm, TEDi,
+  CENTERSHOP (alle vorab angehakt; Woolworth, Thomas Philipps, Mäc-Geiz,
+  Pfennigpfeiffer u. a. wählbar); viel Bio (ALDI „Nur Nur
+  Natur“), Schokolade nur hochwertig. PLZ steht bewusst nicht im Code –
+  einmal in der App eintragen.
+- **Noch nicht mit echten Daten geprüft:** Die Cloud-Sitzung durfte
+  marktguru.de nicht erreichen; getestet mit nachgebauten Antworten. Erster
+  echter Test nach dem Deploy (oder `npm run dev` am Mac).
+- Offen: ein Laden in der Nähe, dessen Name Mareike entfallen ist („Name
+  ist Programm“?), Schulferien RLP automatisch.
+- 81 Tests grün, im Browser (Handy + Desktop) geprüft.
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 

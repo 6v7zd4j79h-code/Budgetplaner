@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { handle, memoryStore } from './server/vault-core.js';
+import { handleOffers } from './server/offers-core.js';
 
 // Startfarbe der App: VITE_FARBE=blau oder grau (z. B. als Netlify-
 // Umgebungsvariable) liefert die Farbe samt passendem App-Icon, ohne Angabe
@@ -29,6 +30,19 @@ function abgleichImDev() {
           let body = null;
           try { body = JSON.parse(text); } catch { /* bleibt null */ }
           const result = await handle(store, body);
+          res.statusCode = result.status;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(result.body));
+        });
+      });
+      // Angebote: fragt beim Entwickeln direkt bei marktguru nach (ohne Zwischenspeicher).
+      server.middlewares.use('/.netlify/functions/offers', (req, res) => {
+        let text = '';
+        req.on('data', (chunk) => { text += chunk; });
+        req.on('end', async () => {
+          let body = null;
+          try { body = JSON.parse(text); } catch { /* bleibt null */ }
+          const result = await handleOffers(body);
           res.statusCode = result.status;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(result.body));

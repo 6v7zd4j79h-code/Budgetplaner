@@ -8,6 +8,8 @@ import { esc, eur, signClass } from './dom.js';
 import { monthWaste } from '../waste.js';
 import { activeAccounts, balancesSummary, loanProgress, loansOf, loansSummary, overdraftRoom } from '../accounts.js';
 import { formatDay } from '../dates.js';
+import { soonCard } from './occasions.js';
+import { offersCard } from './offers.js';
 
 function accountsCard(data, account) {
   const all = activeAccounts(data);
@@ -112,6 +114,8 @@ export function render({ data, key, summary, account }) {
   return `
   ${accountsCard(data, account)}
   ${loansCard(data, account)}
+  ${soonCard(data)}
+  ${offersCard(data)}
   <section class="grid grid-hero">
     <article class="card hero">
       <h2>Verfügbarer Betrag</h2>
