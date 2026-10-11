@@ -878,3 +878,28 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 .section-title { margin: 8px 0 -4px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .loan-row { display: grid; gap: 4px; }
 input[type=month] { min-height: 40px; }
+
+/* --- Angebote der Woche ------------------------------------------------------------ */
+
+.offer-settings { display: grid; gap: 12px; }
+.offer-settings > label { display: grid; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+.offer-settings > label input { color: var(--text); font-size: 1rem; }
+.offer-settings fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 6px; }
+.offer-settings legend { font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+.shop-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 6px 12px; }
+.shop-check, .offer-settings .radio { display: flex; align-items: center; gap: 8px; }
+.term-chips { list-style: none; margin: 8px 0 12px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.term-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); font-size: 0.9rem; }
+.term-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.term-form input[type=text] { flex: 1 1 10rem; min-width: 0; }
+.offer-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; }
+.offer { padding: 8px 0; border-top: 1px solid var(--border); }
+.offer:first-child { border-top: 0; }
+.offer p { margin: 2px 0 0; }
+.offer-main { display: flex; justify-content: space-between; gap: 12px; }
+.offer-title { min-width: 0; overflow-wrap: anywhere; }
+.offer-price { white-space: nowrap; font-weight: 600; }
+.offer-group h2 { text-transform: none; letter-spacing: 0; font-size: 1.05rem; }
+.pill.bio { background: #e3f1e4; color: #1f6b2a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pill.bio { background: #1f3a23; color: #a6dcae; } }
+:root[data-theme="dark"] .pill.bio { background: #1f3a23; color: #a6dcae; }

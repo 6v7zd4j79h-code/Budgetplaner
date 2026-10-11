@@ -49,7 +49,8 @@ export function render({ data }) {
   ${soonCard(data)}
   <article class="card">
     <header class="section-head"><h2>Regelmäßige Einkäufe</h2>
-      <button type="button" class="btn ghost" data-action="goto" data-view="receipt">📷 Scannen</button></header>
+      <div class="btn-row"><button type="button" class="btn" data-action="goto" data-view="offers">🏷 Angebote</button>
+      <button type="button" class="btn ghost" data-action="goto" data-view="receipt">📷 Scannen</button></div></header>
     <p class="muted">${r.receipts} ${r.receipts === 1 ? 'Einkauf' : 'Einkäufe'} mit Artikeln seit ${formatDay(r.from)} ausgewertet,
       ${r.articles} verschiedene Artikel. Als regelmäßig zählt, was mindestens zweimal gekauft wurde.</p>
     ${r.items.length
