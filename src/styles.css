@@ -949,3 +949,10 @@ input[type=month] { min-height: 40px; }
 .item.is-suspect { outline: 2px solid var(--neg); outline-offset: 3px; border-radius: 8px; }
 .item-tags .tag.more { border-style: dashed; }
 .item-tags .pill.small { align-self: center; }
+.sum-missing { margin: 0 0 6px; }
+.item.is-missing .money { border-color: var(--neg); background: color-mix(in srgb, var(--neg) 8%, var(--surface)); }
+.item.is-missing .money::placeholder { color: var(--neg); }
+
+.ai-busy { background: var(--primary-soft); color: var(--primary-strong); font-weight: 600; }
+.ai-note { margin: 4px 0 8px; font-size: 0.9rem; color: var(--primary-strong); }
+.ai-offer { margin: 6px 0 10px; }
