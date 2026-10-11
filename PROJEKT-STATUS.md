@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-11 (Cloud: regelmäßige Einkäufe, Anlässe, Angebote der Woche). Davor 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser). Davor 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -214,10 +214,34 @@ in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
 - 105 Tests grün, im Browser (Handy + Desktop) geprüft.
 - PR #1 am 11.10. nach main übernommen (Deploy).
 
+Am 11.10. am Mac (auf `main`, **deployt** und live geprüft):
+- **„🍽 Für den Essensplan“** (Karte oben unter Regelmäßige Einkäufe,
+  `mealPlanItems`/`mealPlanText` in `src/shopping.js`): Liste der Einkäufe
+  der letzten 3/7/14 Tage ohne Preise, Läden, Konten; ohne Pfand, Tüten,
+  Geschenke; Haken „nur Lebensmittel“ (Kategorien wie Lebensmittel, Artikel
+  ohne Kategorie bleiben drin). „📋 Liste kopieren“, auf dem Handy „↗ Teilen“.
+  Zum Einfügen in den Essensplan des Sternenplans (siehe Offene Punkte).
+- **Vorrat erkennen** (`stockItems`, `stockFor`): Artikel mit Haken „📦 Vorrat“
+  oder ≥ 3 Stück auf einem Bon, 6 Wochen lang. Kein Abhaken nötig (Mareikes
+  Wunsch); optional „ist aufgebraucht“ (`data.stockUsed`, gilt bis zum
+  nächsten Vorratskauf).
+- Vorrat wird genutzt: gelber Hinweis bei passenden **Angeboten** („am 01.10.
+  4× Weiße Bohnen gekauft – vielleicht noch genug da?“), solche Angebote nach
+  hinten, „noch Vorrat“ in der Übersicht; Abschnitt „Auf Vorrat (vermutlich
+  noch da)“ in der Essensplan-Liste; Karte „📦 Auf Vorrat gekauft“.
+  Zuordnung über das Wort („Nudeln“ findet „Bio Nudeln 500g“, nicht
+  „Spaghetti“).
+- Mit dem Cloud-Stand (Bon-Leser, „Bon genau lesen mit Claude“) ohne
+  Konflikte zusammengeführt und gemeinsam deployt. 109 Tests grün, im
+  Browser (Handy + Desktop) mit erfundenen Daten geprüft.
+
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
 
+0. Essensplan-Liste und Vorrat-Warnung mit echten Bons ausprobieren;
+   Angebote der Woche erstmals echt (PLZ eintragen). Essensplan selbst im
+   **Projekt Sternenplan** bauen (Auftragstext liegt bei Mareike).
 1. Am Mac auf budget-kompass.netlify.app **Konto erstellen**, Importdateien
    (Sept + Okt, beide Budgets, inkl. Kredite) einspielen, Gemeinschaftskonto
    **freigeben** und Klas einladen. Danach die unverschlüsselten `.json` in
