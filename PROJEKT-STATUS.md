@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-11 (Cloud: regelmäßige Einkäufe, Anlässe, Angebote der Woche). Davor 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-10-10 bis 2026-10-12 (Cloud: regelmäßige Einkäufe, Anlässe, Angebote der Woche, Bon-Scan stark überarbeitet inkl. PDF und Claude-Lesen, Buchungen bearbeiten/verschieben; 5× deployt). Davor 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -105,8 +105,8 @@ Am 07.10. (Cloud-Sitzung):
   geprüft. Umschalten im Kopf war nicht betroffen.
 - 54 Tests grün, Build läuft.
 
-Am 10./11.10. (Cloud-Sitzung, Branch `regelmaessige-einkaeufe`, **noch nicht
-in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
+Am 10.–12.10. (Cloud-Sitzung, Branch `regelmaessige-einkaeufe`, über
+PR #1–#5 nach `main` übernommen und **deployt**):
 - **Regelmäßige Einkäufe** (`src/shopping.js`, Seite über Ausgaben →
   „🛒 Regelmäßige Einkäufe“): was laut Bon-Artikeln in 6 Monaten mind. zweimal
   gekauft wurde, Rhythmus, Läden, letzter Preis; „woanders günstiger“-Hinweis.
@@ -218,24 +218,37 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
 
-1. Am Mac auf budget-kompass.netlify.app **Konto erstellen**, Importdateien
-   (Sept + Okt, beide Budgets, inkl. Kredite) einspielen, Gemeinschaftskonto
-   **freigeben** und Klas einladen. Danach die unverschlüsselten `.json` in
-   `~/Budgetplan-Sicherungen` löschen.
-2. Auf dem Handy anmelden und zum Home-Bildschirm hinzufügen.
-3. Bon-Scan mit echtem Handyfoto ausprobieren; CSV-Import mit echten
-   Auszügen (bei unbekannter Bank nur die Kopfzeile schicken lassen).
-4. **Rückmeldung von Mareike:** Wird die Pflaumen-Version angezeigt? (Am
-   05.10. gemeldet: „nicht da“ – Vermutung `VITE_FARBE` bei Netlify oder
-   alte Version im Cache.)
-5. Datenschutz: Repo auf **privat** stellen (GitHub → Settings) oder Historie
-   bereinigen – Mareike entscheidet.
+1. **Angebote der Woche mit echten Daten prüfen**: in der App PLZ 56759
+   eintragen, Läden/Karten kontrollieren, Schokolade „nur Bio/Fairtrade“
+   hinzufügen. marktguru-Abfrage ist bisher nur mit nachgebauten Antworten
+   getestet – bei Fehlermeldung Screenshot ansehen.
+2. **Anlässe eintragen** (Geburtstage der Familie, Herbst-/Weihnachtsferien)
+   – nur in der App, nicht ins Repo.
+3. Weitere echte Bons einlesen (REWE, EDEKA-PDF, Lidl, dm) und Auffälliges
+   sammeln; Claude-Kosten in der Anthropic-Konsole unter Usage beobachten.
+4. Ggf. Schulferien Rheinland-Pfalz automatisch vorbelegen.
+5. Ältere Punkte, falls noch offen: Konto/Importdateien/Gemeinschaftskonto
+   freigeben (Klas einladen), Handy-Home-Bildschirm, CSV-Import mit echten
+   Auszügen, Repo privat stellen (Mareike entscheidet).
 
 Erledigt: GitHub-Repo (03.10., https://github.com/6v7zd4j79h-code/Budgetplaner,
 **öffentlich**), Netlify (05.10., **https://budget-kompass.netlify.app**),
 Abgleich über Netlify Blobs statt Neon/Supabase (07.10.).
 
 ## Offene Punkte / Hinweise
+
+- **Bon-Scan:** Die eingebaute Texterkennung (Tesseract) liest auf
+  Handyfotos von Thermobons oft die Preisspalte nicht – dann übernimmt
+  automatisch Claude (`claude-haiku-5-5`, Netlify-Funktion `receipt-ai`,
+  Tageslimit 40, Schlüssel `ANTHROPIC_API_KEY` bei Netlify). Bei sehr
+  langen Bons könnte das Netlify-Zeitlimit knapp werden (bisher ok).
+- **Angebote (marktguru)**: inoffizielle Schnittstelle, kann jederzeit
+  brechen; mit echten Daten noch ungetestet.
+- Ein Laden in der Nähe, dessen Name Mareike entfallen war, ist noch offen
+  (Vorschläge Mäc-Geiz/Pfennigpfeiffer stehen in der Liste).
+- Diese Cloud-Sitzung arbeitete auf Branch `regelmaessige-einkaeufe`
+  (statt `arbeitsstand`); alles davon ist in `main`, nur der letzte
+  Projektstand-Commit ggf. noch nicht.
 
 - **Kopie auf dem PC** unter `Downloads/Projekte/Budgetplaner` (entpackte ZIP).
   Nur Sicherung – maßgeblich ist GitHub. Am PC weiterarbeiten:
