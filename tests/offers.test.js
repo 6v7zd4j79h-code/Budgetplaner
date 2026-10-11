@@ -170,3 +170,29 @@ test('Kalenderwoche', () => {
   assert.equal(weekKey('2027-01-01'), '2026-W53');
   assert.equal(weekKey('2024-12-30'), '2025-W01');
 });
+
+test('Karten & Apps: Payback-Extrapunkte, Angebote nur mit fremder App nach hinten', () => {
+  const list = [{ term: 'Kaffee', key: 'kaffee', sources: ['own'], occasions: [], usual: null, quality: false }];
+  const withCard = (o) => ({ ...o, card: true });
+  const results = { Kaffee: [
+    withCard(offer(1, 'Kaffee Crema', 399, 'Lidl')),
+    offer(2, 'Kaffee Gold 10fach Punkte', 549, 'EDEKA'),
+    withCard(offer(3, 'Kaffee Bohnen', 699, 'EDEKA')),
+  ] };
+  const settings = { shops: ['lidl', 'edeka'], bio: 'any', exclude: '', cards: ['payback'] };
+  const [group] = matchOffers(results, list, settings, { today: '2026-10-11' });
+  assert.deepEqual(group.offers.map((o) => [o.title, o.program, o.needsCard, o.points]), [
+    ['Kaffee Gold 10fach Punkte', 'Payback', false, true],
+    ['Kaffee Bohnen', 'Payback', false, false],
+    ['Kaffee Crema', 'Lidl Plus', true, false],
+  ]);
+
+  // Mit Lidl Plus zaehlt das Lidl-Angebot normal mit.
+  const [all] = matchOffers(results, list, { ...settings, cards: ['payback', 'lidl-plus'] }, { today: '2026-10-11' });
+  assert.equal(all.offers[0].title, 'Kaffee Crema');
+  assert.equal(all.offers[0].needsCard, false);
+
+  // Ohne Payback keine Extrapunkte-Markierung.
+  const [none] = matchOffers(results, list, { ...settings, cards: [] }, { today: '2026-10-11' });
+  assert.ok(none.offers.every((o) => !o.points));
+});

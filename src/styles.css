@@ -903,3 +903,8 @@ input[type=month] { min-height: 40px; }
 .pill.bio { background: #e3f1e4; color: #1f6b2a; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pill.bio { background: #1f3a23; color: #a6dcae; } }
 :root[data-theme="dark"] .pill.bio { background: #1f3a23; color: #a6dcae; }
+
+.pill.points { background: #e6eefb; color: #1d4f9c; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pill.points { background: #1c2c47; color: #a9c6f5; } }
+:root[data-theme="dark"] .pill.points { background: #1c2c47; color: #a9c6f5; }
+.warn-text { color: var(--neg); }

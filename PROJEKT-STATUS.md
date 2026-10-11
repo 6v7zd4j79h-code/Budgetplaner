@@ -136,9 +136,18 @@ in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
 - **Noch nicht mit echten Daten geprüft:** Die Cloud-Sitzung durfte
   marktguru.de nicht erreichen; getestet mit nachgebauten Antworten. Erster
   echter Test nach dem Deploy (oder `npm run dev` am Mac).
+- **Karten & Apps** (Einstellungen der Angebote): Payback (EDEKA, Netto, dm –
+  REWE/PENNY sind 2025 ausgestiegen), Lidl Plus, REWE Bonus, PENNY App,
+  Kaufland Card, Rossmann App. Angebote nur mit fremder App: „nur mit …“ und
+  nach hinten; Payback-Extrapunkte markiert; Hinweis „Coupons in der
+  Payback-App aktivieren“. Payback-Coupons selbst sind persönlich und für die
+  App nicht sichtbar.
+- **Automatische Aktualisierung**: `registerSW({ immediate: true })` in
+  `main.js` – nach einem Deploy lädt die App sich einmal selbst neu.
 - Offen: ein Laden in der Nähe, dessen Name Mareike entfallen ist („Name
   ist Programm“?), Schulferien RLP automatisch.
-- 81 Tests grün, im Browser (Handy + Desktop) geprüft.
+- 82 Tests grün, im Browser (Handy + Desktop) geprüft.
+- PR #1 am 11.10. nach main übernommen (Deploy).
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 

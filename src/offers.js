@@ -43,6 +43,24 @@ export const SHOPS = [
 
 export const DEFAULT_SHOPS = ['aldi-sued', 'lidl', 'edeka', 'rewe', 'penny', 'netto', 'kaufland', 'hit', 'globus', 'rossmann', 'dm', 'tedi', 'centershop'];
 
+// Kundenkarten und Apps. Payback gilt (Stand 2026) bei EDEKA, Marktkauf,
+// Netto Marken-Discount und dm; REWE und PENNY sind ausgestiegen und haben
+// eigene Apps.
+export const PROGRAMS = [
+  { id: 'payback', name: 'Payback', shops: ['edeka', 'netto', 'dm'] },
+  { id: 'lidl-plus', name: 'Lidl Plus', shops: ['lidl'] },
+  { id: 'rewe-bonus', name: 'REWE Bonus', shops: ['rewe'] },
+  { id: 'penny-app', name: 'PENNY App', shops: ['penny'] },
+  { id: 'kaufland-card', name: 'Kaufland Card', shops: ['kaufland'] },
+  { id: 'rossmann-app', name: 'Rossmann App', shops: ['rossmann'] },
+];
+
+export const programOf = (shopId) => PROGRAMS.find((p) => p.shops.includes(shopId)) || null;
+
+// "10fach Punkte", "°P", "Extra-Punkte" - Payback-Aktionen im Prospekttext.
+const POINTS = /payback|\d+\s*-?\s*fach(e)?\s*punkte|extra[\s-]*punkte|\d+\s*°\s*p\b/i;
+export const isPointsPromo = (offer) => POINTS.test(`${offer.title} ${offer.brand} ${offer.description}`);
+
 export function offerSettings(data) {
   const s = data.offerSettings || {};
   return {
@@ -52,6 +70,7 @@ export function offerSettings(data) {
     terms: Array.isArray(s.terms) ? s.terms : [],
     hidden: Array.isArray(s.hidden) ? s.hidden : [],
     exclude: s.exclude || '',
+    cards: Array.isArray(s.cards) ? s.cards : ['payback'],
   };
 }
 
@@ -169,9 +188,19 @@ export function matchOffers(results, list, settings, { today = todayISO() } = {}
       if (seen.has(id)) continue;
       seen.add(id);
       const saving = entry.usual && raw.price < entry.usual.price ? entry.usual.price - raw.price : 0;
-      offers.push({ ...raw, shop: shop.name, bio, saving });
+      const program = programOf(shop.id);
+      const hasCard = Boolean(program && (settings.cards || []).includes(program.id));
+      offers.push({
+        ...raw, shop: shop.name, shopId: shop.id, bio, saving,
+        program: program?.name || null,
+        hasCard,
+        // Gilt nur mit Karte/App, die ihr nicht habt.
+        needsCard: Boolean(raw.card && !hasCard),
+        points: hasCard && program.id === 'payback' && isPointsPromo(raw),
+      });
     }
-    offers.sort((a, b) => (settings.bio === 'prefer' && a.bio !== b.bio ? (a.bio ? -1 : 1) : a.price - b.price));
+    offers.sort((a, b) => (a.needsCard !== b.needsCard ? (a.needsCard ? 1 : -1)
+      : settings.bio === 'prefer' && a.bio !== b.bio ? (a.bio ? -1 : 1) : a.price - b.price));
     if (offers.length) groups.push({ ...entry, offers });
   }
   // Erst was ihr regelmaessig kauft und guenstiger ist, dann Anlaesse, dann der Rest.

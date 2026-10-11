@@ -3,7 +3,7 @@
 // Oeffnen automatisch geprueft; das Ergebnis bleibt auf dem Geraet.
 
 import { formatDay, todayISO } from '../dates.js';
-import { DEFAULT_SHOPS, SHOPS, matchOffers, offerSettings, watchlist, weekKey } from '../offers.js';
+import { DEFAULT_SHOPS, PROGRAMS, SHOPS, matchOffers, offerSettings, watchlist, weekKey } from '../offers.js';
 import { regularItems } from '../shopping.js';
 import { store, update } from '../store.js';
 import { esc, eur } from './dom.js';
@@ -76,8 +76,18 @@ function offerRow(o) {
       <span class="offer-title">${o.bio ? '<span class="pill small bio">Bio</span> ' : ''}${esc(o.title)}${o.brand && !o.title.toLowerCase().includes(o.brand.toLowerCase()) ? ` <span class="muted">· ${esc(o.brand)}</span>` : ''}</span>
       <span class="offer-price">${eur(o.price)}${o.oldPrice && o.oldPrice > o.price ? ` <s class="muted">${eur(o.oldPrice)}</s>` : ''}</span>
     </div>
-    <p class="muted small">${esc(o.shop)}${o.unit ? ` · ${esc(o.unit)}` : ''}${o.to ? ` · bis ${formatDay(o.to)}` : ''}${o.card ? ' · mit Kundenkarte/App' : ''}${o.saving ? ` · <strong class="pos">${eur(o.saving)} günstiger als sonst</strong>` : ''}</p>
+    <p class="muted small">${esc(o.shop)}${o.unit ? ` · ${esc(o.unit)}` : ''}${o.to ? ` · bis ${formatDay(o.to)}` : ''}${o.card ? (o.needsCard ? ` · <span class="warn-text">nur mit ${esc(o.program || 'Kundenkarte/App')}</span>` : ` · mit ${esc(o.program || 'Kundenkarte/App')} ✓`) : ''}${o.points ? ' · <span class="pill small points">Payback-Extrapunkte</span>' : ''}${o.saving ? ` · <strong class="pos">${eur(o.saving)} günstiger als sonst</strong>` : ''}</p>
   </li>`;
+}
+
+// Erinnerung: Payback-Coupons vor dem Einkauf in der App aktivieren.
+function paybackHint(settings, groups) {
+  if (!settings.cards.includes('payback')) return '';
+  const payback = PROGRAMS.find((p) => p.id === 'payback');
+  const shops = SHOPS.filter((s) => payback.shops.includes(s.id) && settings.shops.includes(s.id));
+  if (!shops.length) return '';
+  const points = groups.some((g) => g.offers.some((o) => o.points));
+  return `<p class="privacy">💳 Payback bei ${shops.map((s) => esc(s.name)).join(', ')}: vor dem Einkauf die Coupons in der Payback-App aktivieren${points ? ' – diese Woche sind Extrapunkte dabei' : ''}.</p>`;
 }
 
 function settingsCard(settings) {
@@ -91,6 +101,9 @@ function settingsCard(settings) {
       </fieldset>
       <fieldset><legend>Bio</legend>
         ${[['prefer', 'Bio bevorzugen (zuerst zeigen)'], ['only', 'Nur Bio-Angebote'], ['any', 'Egal']].map(([v, l]) => `<label class="radio"><input type="radio" name="bio" value="${v}" ${settings.bio === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}
+      </fieldset>
+      <fieldset><legend>Eure Karten &amp; Apps</legend>
+        <div class="shop-checks">${PROGRAMS.map((c) => `<label class="shop-check"><input type="checkbox" name="cards" value="${c.id}" ${settings.cards.includes(c.id) ? 'checked' : ''}><span>${esc(c.name)}</span></label>`).join('')}</div>
       </fieldset>
       <label>Nicht anzeigen (Wörter, mit Komma)<input type="text" name="exclude" value="${esc(settings.exclude)}" placeholder="z. B. Light, Milka" autocomplete="off"></label>
       <p class="privacy">🔒 Zum Suchen werden nur Postleitzahl und Suchwörter (z. B. „Butter“) an marktguru.de geschickt – nichts aus deinem Budget.</p>
@@ -165,6 +178,7 @@ export function render(ctx) {
     <p class="muted">PLZ ${esc(settings.zip)} · ${esc(shopNames)}${settings.bio === 'only' ? ' · nur Bio' : settings.bio === 'prefer' ? ' · Bio zuerst' : ''}</p>
     ${state.busy ? '<p>Suche läuft …</p>' : ''}
     ${state.error ? `<p class="form-error">${esc(state.error)}</p>` : ''}
+ ${paybackHint(settings, groups)}
     ${cache ? `<p class="hint">Stand: ${formatDay(String(cache.at).slice(0, 10))}${cache.failed?.length ? ` · nicht gefunden: ${cache.failed.map(esc).join(', ')}` : ''}</p>` : ''}
     <button type="button" class="btn ${cache ? '' : 'primary'}" data-action="offers-check" ${state.busy || !list.length ? 'disabled' : ''}>${cache ? 'Neu prüfen' : 'Jetzt prüfen'}</button>
   </article>
@@ -205,6 +219,7 @@ export const actions = {
       s.shops = shops;
       s.bio = String(fields.get('bio') || 'prefer');
       s.exclude = String(fields.get('exclude') || '').trim();
+      s.cards = fields.getAll('cards').map(String);
     });
     state = { ...state, showSettings: false, error: null, autoTried: null };
     ctx.rerender();
