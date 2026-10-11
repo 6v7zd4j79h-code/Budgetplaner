@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-10 bis 2026-10-12 (Cloud: regelmäßige Einkäufe, Anlässe, Angebote der Woche, Bon-Scan stark überarbeitet inkl. PDF und Claude-Lesen, Buchungen bearbeiten/verschieben; 5× deployt). Davor 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-10-10 bis 2026-10-11 (Cloud: regelmäßige Einkäufe, Anlässe, Angebote der Woche, Bon-Scan stark überarbeitet inkl. PDF und Claude-Lesen, Buchungen bearbeiten/verschieben; 5× deployt). Davor 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -105,7 +105,7 @@ Am 07.10. (Cloud-Sitzung):
   geprüft. Umschalten im Kopf war nicht betroffen.
 - 54 Tests grün, Build läuft.
 
-Am 10.–12.10. (Cloud-Sitzung, Branch `regelmaessige-einkaeufe`, über
+Am 10./11.10. (Cloud-Sitzung, Branch `regelmaessige-einkaeufe`, über
 PR #1–#5 nach `main` übernommen und **deployt**):
 - **Regelmäßige Einkäufe** (`src/shopping.js`, Seite über Ausgaben →
   „🛒 Regelmäßige Einkäufe“): was laut Bon-Artikeln in 6 Monaten mind. zweimal
@@ -185,7 +185,7 @@ PR #1–#5 nach `main` übernommen und **deployt**):
   Lebensmittel, Schlafanzug bei ALDI → Kleidung; `expenseActuals` teilt
   die Buchung im Budget entsprechend auf.
 - Artikel-Optionen eingeklappt („＋ mehr“), gesetzte Haken als Chips.
-- **Echter ALDI-Bon (3 Fotos) untersucht** (12.10.): Die eingebaute
+- **Echter ALDI-Bon (3 Fotos) untersucht** (11.10.): Die eingebaute
   Texterkennung (Tesseract) liest auf Handyfotos von Thermobons die
   Preisspalte nicht (0 von 73 Preisen), Fotos überlappen 20–35 Zeilen,
   Sofortstorno. Bon-Leser jetzt: Artikel ohne Preis bleiben sichtbar
@@ -199,8 +199,8 @@ PR #1–#5 nach `main` übernommen und **deployt**):
   Fotos werden auf 1600 px verkleinert. Tageslimit 40 (Netlify Blobs,
   `RECEIPT_AI_DAILY_LIMIT`). **Einrichtung nötig:** API-Schlüssel von
   console.anthropic.com (Guthaben aufladen) als Umgebungsvariable
-  `ANTHROPIC_API_KEY` bei Netlify – **erledigt (12.10.)**, Guthaben vorhanden.
-  **Live bestätigt (12.10.):** langer ALDI-Bon (3 Fotos) und digitaler
+  `ANTHROPIC_API_KEY` bei Netlify – **erledigt (11.10.)**, Guthaben vorhanden.
+  **Live bestätigt (11.10.):** langer ALDI-Bon (3 Fotos) und digitaler
   Rossmann-Bon werden laut Mareike korrekt eingelesen.
 - **Digitaler Rossmann-Bon (Screenshot)**: Coupons im eigenen Block nach
   der Zwischensumme wurden vom letzten Artikel abgezogen (Tee fiel auf 0 €
