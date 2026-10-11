@@ -199,9 +199,9 @@ in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
   Fotos werden auf 1600 px verkleinert. Tageslimit 40 (Netlify Blobs,
   `RECEIPT_AI_DAILY_LIMIT`). **Einrichtung nötig:** API-Schlüssel von
   console.anthropic.com (Guthaben aufladen) als Umgebungsvariable
-  `ANTHROPIC_API_KEY` bei Netlify, danach neu deployen. Noch nicht mit
-  echtem Claude getestet (kein Schlüssel in der Cloud-Sitzung); Laufzeit
-  bei langen Bons vs. Netlify-Zeitlimit beim ersten echten Test prüfen.
+  `ANTHROPIC_API_KEY` bei Netlify – **erledigt (12.10.)**, Guthaben vorhanden.
+  **Live bestätigt (12.10.):** langer ALDI-Bon (3 Fotos) und digitaler
+  Rossmann-Bon werden laut Mareike korrekt eingelesen.
 - **Digitaler Rossmann-Bon (Screenshot)**: Coupons im eigenen Block nach
   der Zwischensumme wurden vom letzten Artikel abgezogen (Tee fiel auf 0 €
   und verschwand). Jetzt eigene Minus-Zeilen; Laden an Eigenmarken erkannt
