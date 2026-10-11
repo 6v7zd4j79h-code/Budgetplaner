@@ -95,3 +95,69 @@ test('Zwei Fotos ohne Ueberlappung und gleiche Artikel nacheinander bleiben erha
   const joined = joinParts(['REWE\nMILCH 1,19 A', 'BROT 2,49 A\nSUMME 3,68']);
   assert.deepEqual(parseReceipt(joined).items.map((i) => i.name), ['Milch', 'Brot']);
 });
+
+// Erfundener Bon im Format der digitalen EDEKA-Bons (eBon/PDF): Steuer-
+// kennzeichen "AW" und "*A", Stueckpreis x Menge in der Artikelzeile,
+// Gewichtszeile, Payback-Text nach der Summe.
+const EDEKA_EBON = `EDEKA Muster
+Musterstr. 1
+12345 Musterstadt
+EUR
+BIO ALNA.HAFERKEKSE  2,49  A
+BIO SKYR NATUR  1,59 € x  3  4,77  AW
+KINDERBUCH  1,50 € x  2  3,00*A
+BIO VIVANI ZARTBITTER  2,99  A
+WIRSING  1,19  A
+0,512 kg x  1,99 €/kg
+BIO SCHNITTKR.  0,79  A
+Coupon: 12345678
+Posten: 9  ----------
+SUMME  €  15,23
+Karte  €  15,23
+MwSt  NETTO  MwSt  UMSATZ
+A 7%  14,23  1,00  15,23
+PAYBACK - ******0000
+22 °P Basispunkte
+09.10.26 17:35  0000000 102 038 8100`;
+
+test('Digitaler EDEKA-Bon: AW, *A und Stueckpreis x Menge', () => {
+  const r = parseReceipt(EDEKA_EBON);
+  assert.equal(r.shop, 'EDEKA');
+  assert.equal(r.date, '2026-10-09');
+  assert.equal(r.total, 1523);
+  assert.deepEqual(r.items.map((i) => [i.name, i.amount]), [
+    ['Bio Alna.Haferkekse', 249],
+    ['Bio Skyr Natur', 477],
+    ['Kinderbuch', 300],
+    ['Bio Vivani Zartbitter', 299],
+    ['Wirsing', 119],
+    ['Bio Schnittkr.', 79],
+  ]);
+  assert.equal(r.sum, r.total);
+});
+
+// Erfundene Rechnung (PDF zum Herunterladen): Zwischensumme und Netto
+// duerfen nicht als Endbetrag gelten, Tausenderpunkt wird verstanden.
+const RECHNUNG = `Muster Moebel GmbH
+Rechnung Nr. 2026-1234
+Rechnungsdatum: 05.10.2026
+Pos. Artikel Menge Einzelpreis Gesamt
+1 Kinderschreibtisch 1 1.149,00 € 1.149,00 €
+2 Schreibtischlampe 2 24,95 € 49,90 €
+Zwischensumme 1.198,90 €
+Versand 19,90 €
+Summe netto 1.024,20 €
+MwSt. 19 % 194,60 €
+Gesamtbetrag 1.218,80 €
+Zahlbar bis 19.10.2026`;
+
+test('Rechnung als PDF: Endbetrag, Tausenderpunkt, Zwischensummen', () => {
+  const r = parseReceipt(RECHNUNG);
+  assert.equal(r.date, '2026-10-05');
+  assert.equal(r.total, 121880);
+  assert.deepEqual(r.items.map((i) => [i.name, i.amount]), [
+    ['Kinderschreibtisch', 114900],
+    ['Schreibtischlampe', 4990],
+    ['Versand', 1990],
+  ]);
+});

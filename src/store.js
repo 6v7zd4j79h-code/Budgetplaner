@@ -736,6 +736,52 @@ export function update(mutator) {
   emit();
 }
 
+// Eine Buchung in ein anderes Budget verschieben (z. B. versehentlich im
+// privaten statt im Gemeinschaftskonto gebucht). Die Kategorie wird ueber
+// den Namen im Ziel-Budget gesucht; Konten gehoeren zum alten Budget und
+// fallen weg. Gibt eine Fehlermeldung zurueck oder null.
+export function moveEntry(entryId, targetId) {
+  if (store.locked) return 'Das Budget ist gesperrt.';
+  const target = store.budgets.find((b) => b.id === targetId);
+  if (!target || targetId === store.active) return 'Ziel-Budget nicht gefunden.';
+  const entry = store.data.log.find((e) => e.id === entryId);
+  if (!entry) return 'Buchung nicht gefunden.';
+
+  let book;
+  if (store.mode === 'vault') {
+    book = vault.books[targetId] || (vault.books[targetId] = emptyData());
+  } else {
+    if (isProtected(targetId)) return `„${target.name}" ist mit Passwort geschützt. Bitte erst dorthin wechseln und entsperren – oder die Buchung dort neu anlegen.`;
+    book = readData(targetId);
+  }
+
+  const key = entry.date.slice(0, 7);
+  const lineName = (store.data.months[key]?.lines.expenses || []).find((l) => l.id === entry.lineId)?.name;
+  const targetMonth = book.months[key] || Object.values(book.months).at(-1);
+  const targetLine = targetMonth?.lines.expenses.find((l) => l.name && l.name === lineName);
+  const moved = { ...entry, lineId: targetLine?.id || null };
+  delete moved.accountId;
+  delete moved.business;
+  book.log.push(moved);
+
+  // Erst im Ziel sichern, dann im alten Budget entfernen - sonst ginge die
+  // Buchung bei einem Fehler verloren.
+  if (store.mode === 'vault') {
+    if (target.shared) dirty.spaces.add(targetId);
+    else dirty.vault = true;
+  } else {
+    try {
+      localStorage.setItem(dataKey(targetId), JSON.stringify(book));
+    } catch {
+      return 'Das andere Budget konnte nicht gespeichert werden.';
+    }
+  }
+  store.data.log = store.data.log.filter((e) => e.id !== entryId);
+  save();
+  emit();
+  return null;
+}
+
 // Ein geschuetztes Budget (oder eines im Tresor) wird verschluesselt
 // exportiert - die Sicherungsdatei laesst sich dann nur mit demselben
 // Passwort wieder oeffnen.

@@ -21,24 +21,34 @@ const SHOP_DISPLAY = {
 };
 
 // Zeilen, nach denen keine Artikel mehr kommen.
-const TOTAL = /^(summe|zu zahlen|zwischensumme|gesamt(betrag)?|total|endbetrag|betrag\b|sum\b)/i;
+const TOTAL = /^(summe|zu zahlen|gesamt(betrag)?|total|endbetrag|endsumme|rechnungsbetrag|bruttobetrag|zahlbetrag|betrag\b|sum\b)/i;
+// Zwischensummen (vor allem auf Rechnungen) sind weder Artikel noch Endbetrag.
+const SUBTOTAL = /^(zwischensumme|warenwert|nettobetrag|netto)|^(summe|gesamt\w*)\s*\(?netto/i;
 // Zeilen, die nie Artikel sind.
 const NOISE = /(mwst|mw\.?-?st|\bust\b|steuer|netto|brutto|rückgeld|rueckgeld|gegeben|\bbar\b|ec-?cash|girocard|kartenzahlung|visa|mastercard|maestro|kontaktlos|terminal|beleg|\btse\b|signatur|transaktion|kassierer|bon-?nr|filiale|vielen dank|öffnungszeiten|www\.|\btel\b\.?|ust-?id|st\.?-?nr|payback|treuepunkte|^eur$|^€$|^\*+$)/i;
 const QUANTITY = /^\s*-?\d+([.,]\d+)?\s*(x|stk|st\.?|kg)\s*[x*]?\s*\d+[.,]\d{2}/i;
 const DISCOUNT = /(rabatt|nachlass|coupon|gutschein|aktion|preisvorteil|sie sparen|ersparnis|mitarbeiter)/i;
 
 // "8,99", "8.99", "8 ,99", "8,99-", "-1,00" am Zeilenende, gefolgt
-// hoechstens von einem Steuerkennzeichen (A, B, 1, 2, *).
-const PRICE_AT_END = /(-?)\s*(\d{1,4})\s*[.,]\s*(\d{2})\s*(-?)\s*(?:[A-D12*]{1,2}|€|EUR)?\s*$/i;
+// hoechstens von einem Steuerkennzeichen (A, B, 1, 2, *, bei EDEKA auch "AW" oder "*A").
+const PRICE_AT_END = /(-?)\s*(\d{1,3}(?:\.\d{3})+|\d{1,5})\s*[.,]\s*(\d{2})\s*(-?)\s*(?:[A-DW12*]{1,3}|€|EUR)?\s*$/i;
 
 function toCents(sign1, euros, cents, sign2) {
-  const value = Number(euros) * 100 + Number(cents);
+  const value = Number(String(euros).replace(/\./g, '')) * 100 + Number(cents); // "1.234" = Tausenderpunkt
   return sign1 === '-' || sign2 === '-' ? -value : value;
 }
 
+// Rechnungstabelle: "1 Kinderschreibtisch 1 1.149,00 €" (Pos., Artikel,
+// Menge, Einzelpreis) - nur der Artikel bleibt.
+const INVOICE_ROW = /\s+\d+([.,]\d+)?\s+\d{1,3}(\.\d{3})*,\d{2}\s*(€|eur)?\s*$/i;
+
 function cleanName(text) {
+  const invoiceRow = INVOICE_ROW.test(text);
   return text
+    .replace(INVOICE_ROW, '')
+    .replace(invoiceRow ? /^\d{1,3}\s+(?=[A-Za-zÄÖÜäöü])/ : /^$/, '') // Positionsnummer
     .replace(/^\d{4,}\s+/, '') // Artikelnummer am Anfang
+    .replace(/\s+\d+[.,]\d{2}\s*(€|eur)?\s*[x*]\s*\d+([.,]\d+)?\s*$/i, '') // "1,69 € x 4" (Stueckpreis x Menge)
     .replace(/\s{2,}/g, ' ')
     .replace(/[|_~]+/g, ' ')
     .replace(/\s+[A-D12*]$/i, '')
@@ -73,6 +83,7 @@ export function parseReceipt(text) {
       if (m) date = parseDate(m[1]);
     }
     const price = line.match(PRICE_AT_END);
+    if (SUBTOTAL.test(line)) continue;
     if (TOTAL.test(line)) {
       if (price && total == null) total = Math.abs(toCents(price[1], price[2], price[3], price[4]));
       afterTotal = true;
@@ -102,7 +113,7 @@ export function parseReceipt(text) {
 // "Koro Erdnussbutter" angenehmer; gemischte Schreibung bleibt, wie sie ist.
 function titleCase(name) {
   if (name !== name.toUpperCase()) return name;
-  return name.toLowerCase().replace(/(^|[\s/-])([a-zäöü])/g, (m, pre, ch) => pre + ch.toUpperCase());
+  return name.toLowerCase().replace(/(^|[\s/.-])([a-zäöü])/g, (m, pre, ch) => pre + ch.toUpperCase());
 }
 
 // Lange Bons werden in mehreren Fotos aufgenommen, von oben nach unten.

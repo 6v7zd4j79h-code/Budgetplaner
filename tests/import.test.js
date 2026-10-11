@@ -230,3 +230,15 @@ test('PayPal und Stripe zaehlen nicht zum Startbetrag', () => {
   assert.equal(openingBalance(fileOf(PAYPAL), '2026-09').how, 'none');
   assert.equal(openingBalance(fileOf(STRIPE), '2026-09').how, 'none');
 });
+
+test('PDF-Textstuecke werden zu Bonzeilen', async () => {
+  const { linesFromItems } = await import('../src/pdf-lines.js');
+  const at = (str, x, y) => ({ str, transform: [1, 0, 0, 1, x, y] });
+  const lines = linesFromItems([
+    at('2,99 A', 300, 700), at('BIO KEKSE', 20, 700.5),
+    at('EDEKA Muster', 100, 760),
+    at('SUMME', 20, 600), at('€', 120, 600), at('2,99', 300, 600),
+    at(' ', 20, 650),
+  ]);
+  assert.deepEqual(lines, ['EDEKA Muster', 'BIO KEKSE  2,99 A', 'SUMME  €  2,99']);
+});

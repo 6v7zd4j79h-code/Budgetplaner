@@ -159,11 +159,23 @@ in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
   Geschenk auch für ganze Buchungen (`entry.gift`). „Für wen ausgegeben“
   teilt Buchungen auf (Artikel mit eigener Person zählen dort, der Rest bei
   der Buchung); Karte „🎁 Geschenke“ unter Ausgaben.
+- **PDF-Kassenbons und Rechnungen** (`src/pdf.js` mit pdfjs-dist, lädt erst
+  beim ersten PDF; Zeilenaufbau in `src/pdf-lines.js`): eBons aus EDEKA-,
+  REWE-, Lidl-Plus-, dm-App und heruntergeladene Rechnungen – Text direkt aus
+  dem PDF, keine Texterkennung. Bon-Leser kann jetzt Steuerkennzeichen „AW“
+  und „*A“, „1,69 € x 4“ im Namen, Tausenderpunkt, Rechnungstabellen
+  (Pos./Menge/Einzelpreis), Zwischensumme/Summe netto ≠ Endbetrag.
+  Auslöser: Mareikes EDEKA-eBon (PDF) wurde nicht angenommen.
+- **Buchung bearbeiten** („✎ Bearbeiten“ bzw. Tipp auf die Kategorie):
+  Datum, Kategorie, Konto, Notiz, Betrag; **in anderes Budget verschieben**
+  (`moveEntry` in `store.js`, z. B. privat → Gemeinschaftskonto; Kategorie
+  über den Namen, Konto fällt weg; bei passwortgeschütztem Ziel im lokalen
+  Modus Hinweis statt Verschieben).
 - **Regelmäßige Einkäufe ausblenden** (× pro Artikel, `data.regularHidden`),
   zählt dann auch nicht mehr für die Angebote.
 - Offen: ein Laden in der Nähe, dessen Name Mareike entfallen ist („Name
   ist Programm“?), Schulferien RLP automatisch.
-- 90 Tests grün, im Browser (Handy + Desktop) geprüft.
+- 93 Tests grün, im Browser (Handy + Desktop) geprüft.
 - PR #1 am 11.10. nach main übernommen (Deploy).
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.

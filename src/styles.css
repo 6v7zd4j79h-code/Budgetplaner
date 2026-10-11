@@ -570,7 +570,7 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 .day-head { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); font-weight: 700; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
 .day ul { list-style: none; margin: 0; padding: 0; }
 .entry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto 32px; gap: 10px; align-items: center; padding: 6px 0; }
-.entry-cat { font-size: 0.8rem; padding: 2px 8px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); white-space: nowrap; }
+.entry-cat { font-size: 0.8rem; padding: 2px 8px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); white-space: nowrap; color: inherit; font-family: inherit; cursor: pointer; justify-self: start; }
 .entry-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
 .entry-amount { font-weight: 600; white-space: nowrap; }
 
@@ -928,3 +928,15 @@ input[type=month] { min-height: 40px; }
 .for-card .term-chips { margin-top: 12px; }
 .tag.on.gift { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-strong); }
 .item-tags .for-select { min-height: 28px; }
+
+.entry-edit { display: grid; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.entry-edit .sub-h, .items > .sub-h { margin: 0; }
+.entry-edit-grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.entry-edit-grid label, .entry-move label { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); }
+.entry-edit-grid label > *, .entry-move label > * { color: var(--text); font-size: 0.95rem; min-width: 0; }
+.entry-move { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.entry-move .form-error { grid-column: 1 / -1; margin: 0; }
+@media (min-width: 760px) { .entry-edit-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.pdf-thumb { display: grid; place-items: center; aspect-ratio: 3 / 4; font-size: 0.9rem; color: var(--muted); }
+.receipt-head.no-thumb { grid-template-columns: minmax(0, 1fr); }
+.receipt-head.no-thumb .receipt-fields { grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }

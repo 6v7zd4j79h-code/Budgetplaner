@@ -6,6 +6,7 @@ import { newId } from '../budget.js';
 import { addMonths, formatDay, todayISO } from '../dates.js';
 import { parseMoney } from '../money.js';
 import { joinParts, parseReceipt } from '../receipt.js';
+import { isPdf } from '../pdf-lines.js';
 import { update } from '../store.js';
 import { itemKey, rememberedWaste } from '../waste.js';
 import { esc, eur, itemTags, moneyInput } from './dom.js';
@@ -42,11 +43,12 @@ function expenseLines(data, date) {
 function renderPick() {
   return `
   <article class="card">
-    <h2>Kassenbon scannen</h2>
+    <h2>Kassenbon oder Rechnung</h2>
     <p>Fotografiere den Bon von oben, möglichst gerade und gut beleuchtet. Lange Bons gern in zwei Fotos.</p>
     <p class="privacy">🔒 Das Foto wird nur hier auf dem Gerät gelesen. Es wird weder hochgeladen noch gespeichert.</p>
     ${photoButtons(true)}
     <p class="hint">Langer Bon? Einfach in mehreren Fotos von oben nach unten – die App fragt nach jedem Foto, ob noch etwas fehlt.</p>
+    <p class="hint">📄 <strong>Digitaler Bon oder Rechnung als PDF</strong> (z. B. aus der EDEKA-, REWE-, Lidl-Plus- oder dm-App, oder eine heruntergeladene Rechnung)? Über „Bild oder PDF wählen“ – der Text wird direkt gelesen, ganz ohne Lesefehler.</p>
     ${scan.error ? `<p class="form-error">${esc(scan.error)}</p>` : ''}
     <p class="hint">Beim ersten Scan lädt die App einmalig die Texterkennung (ca. 5 MB). Danach geht es auch ohne Internet.</p>
   </article>`;
@@ -57,11 +59,15 @@ function photoButtons(first) {
       <label class="btn ${first ? 'primary' : ''} file-btn">📷 ${first ? 'Foto aufnehmen' : 'Nächstes Stück fotografieren'}
         <input type="file" accept="image/*" capture="environment" data-action="receipt-photo" hidden>
       </label>
-      <label class="btn file-btn">Bild aus Galerie
-        <input type="file" accept="image/*" data-action="receipt-photo" hidden>
+      <label class="btn file-btn">Bild oder PDF wählen
+        <input type="file" accept="image/*,application/pdf,.pdf" data-action="receipt-photo" hidden>
       </label>
     </div>`;
 }
+
+const thumb = (part, i) => (part.imageUrl
+  ? `<img class="receipt-thumb" src="${part.imageUrl}" alt="Foto ${i + 1} des Kassenbons">`
+  : '<div class="receipt-thumb pdf-thumb" aria-label="PDF-Kassenbon">📄 PDF</div>');
 
 // Nach jedem Foto: Geht der Bon weiter oder ist er vollstaendig?
 function renderMore() {
@@ -70,7 +76,7 @@ function renderMore() {
   return `
   <article class="card">
     <h2>${n === 1 ? 'Foto gelesen' : `${n} Fotos gelesen`}</h2>
-    <div class="receipt-parts">${scan.parts.map((p, i) => `<figure><img class="receipt-thumb" src="${p.imageUrl}" alt="Foto ${i + 1} des Kassenbons"><figcaption class="muted small">Teil ${i + 1}</figcaption></figure>`).join('')}</div>
+    <div class="receipt-parts">${scan.parts.map((p, i) => `<figure>${thumb(p, i)}<figcaption class="muted small">Teil ${i + 1}</figcaption></figure>`).join('')}</div>
     <p>${r.items.length} Artikel erkannt${r.total ? ` · <strong>Summe ${eur(r.total)} gefunden</strong> – der Bon ist wahrscheinlich vollständig` : ' · noch keine Summe gefunden'}.</p>
     ${scan.error ? `<p class="form-error">${esc(scan.error)}</p>` : ''}
     <h3 class="sub-h">Geht der Bon noch weiter?</h3>
@@ -110,8 +116,8 @@ function renderReview(data) {
   return `
   <article class="card">
     <header class="section-head"><h2>Bon prüfen</h2>
-      <button type="button" class="btn ghost" data-action="receipt-reset">Neues Foto</button></header>
-    <div class="receipt-head">
+      <button type="button" class="btn ghost" data-action="receipt-reset">Neu anfangen</button></header>
+    <div class="receipt-head${scan.imageUrl ? '' : ' no-thumb'}">
       ${scan.imageUrl ? `<img class="receipt-thumb" src="${scan.imageUrl}" alt="Foto des Kassenbons">` : ''}
       <div class="receipt-fields">
         <label>Laden<input type="text" data-action="receipt-field" data-key="shop" value="${esc(r.shop)}" placeholder="z. B. EDEKA"></label>
@@ -181,22 +187,27 @@ export const actions = {
     if (!file) return;
     // Weitere Fotos haengen sich an die bisherigen Teile an.
     const parts = scan.phase === 'more' ? scan.parts : [];
-    if (!parts.length) scan.parts?.forEach((part) => URL.revokeObjectURL(part.imageUrl));
-    const imageUrl = URL.createObjectURL(file);
-    scan = { phase: 'reading', progress: 0, status: 'Bild wird vorbereitet', imageUrl, parts };
+    if (!parts.length) scan.parts?.forEach((part) => part.imageUrl && URL.revokeObjectURL(part.imageUrl));
+    const pdf = isPdf(file);
+    const imageUrl = pdf ? null : URL.createObjectURL(file);
+    scan = { phase: 'reading', progress: 0, status: pdf ? 'PDF wird geöffnet' : 'Bild wird vorbereitet', imageUrl, parts };
     ctx.rerender();
     try {
-      const { recognize } = await import('../ocr.js');
       let last = 0;
-      const text = await recognize(file, (p, status) => {
+      const progress = (p, status) => {
         scan.progress = p;
         scan.status = status;
         // Nicht bei jedem Prozentpunkt neu zeichnen.
         if (p - last > 0.04 || p === 1) { last = p; ctx.rerender(); }
-      });
+      };
+      // Digitaler Bon (PDF): Text direkt auslesen. Foto: Texterkennung.
+      const text = pdf
+        ? await (await import('../pdf.js')).pdfText(file, progress)
+        : await (await import('../ocr.js')).recognize(file, progress);
+      if (pdf && !text.trim()) throw new Error('Im PDF steht kein lesbarer Text – ist es vielleicht ein eingescanntes Bild? Dann bitte als Foto aufnehmen');
       parts.push({ text, imageUrl });
       scan.text = joinParts(parts.map((part) => part.text));
-      scan.imageUrl = parts[0].imageUrl;
+      scan.imageUrl = parts.find((part) => part.imageUrl)?.imageUrl || null;
       const parsed = parseReceipt(scan.text);
       scan.result = {
         ...parsed,
@@ -204,12 +215,15 @@ export const actions = {
       };
       const lines = expenseLines(ctx.data, parsed.date);
       scan.lineId = (lines.find((l) => /lebensmittel/i.test(l.name)) || lines[0])?.id;
-      scan.phase = 'more';
+      // Ein digitaler Bon ist vollstaendig - direkt zum Pruefen.
+      scan.phase = pdf && parts.length === 1 && parsed.total ? 'review' : 'more';
     } catch (error) {
-      URL.revokeObjectURL(imageUrl);
+      if (imageUrl) URL.revokeObjectURL(imageUrl);
       scan.imageUrl = parts[0]?.imageUrl || null;
       scan.phase = parts.length ? 'more' : 'pick';
-      scan.error = `Der Bon konnte nicht gelesen werden (${error?.message || error}). Ist das Internet für den ersten Scan da?`;
+      scan.error = pdf
+        ? `Das PDF konnte nicht gelesen werden (${error?.message || error}).`
+        : `Der Bon konnte nicht gelesen werden (${error?.message || error}). Ist das Internet für den ersten Scan da?`;
     }
     ctx.rerender();
   },
@@ -301,19 +315,19 @@ export const actions = {
   },
   'receipt-drop-part'(_el, _event, ctx) {
     const part = scan.parts.pop();
-    if (part) URL.revokeObjectURL(part.imageUrl);
+    if (part?.imageUrl) URL.revokeObjectURL(part.imageUrl);
     if (!scan.parts.length) {
       reset();
     } else {
       scan.text = joinParts(scan.parts.map((p) => p.text));
       const parsed = parseReceipt(scan.text);
       scan.result = { ...parsed, items: parsed.items.map((it) => ({ ...it, waste: rememberedWaste(ctx.data.wasteRules, it.name) === true })) };
-      scan.imageUrl = scan.parts[0].imageUrl;
+      scan.imageUrl = scan.parts.find((p) => p.imageUrl)?.imageUrl || null;
     }
     ctx.rerender();
   },
   'receipt-reset'(_el, _event, ctx) {
-    scan?.parts?.forEach((part) => URL.revokeObjectURL(part.imageUrl));
+    scan?.parts?.forEach((part) => part.imageUrl && URL.revokeObjectURL(part.imageUrl));
     if (scan?.imageUrl && !scan?.parts?.length) URL.revokeObjectURL(scan.imageUrl);
     reset();
     ctx.rerender();

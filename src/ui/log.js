@@ -4,7 +4,7 @@
 import { expenseActuals, logForMonth, newId } from '../budget.js';
 import { clampToMonth, formatDay, todayISO } from '../dates.js';
 import { parseMoney } from '../money.js';
-import { update } from '../store.js';
+import { moveEntry, store, update } from '../store.js';
 import { esc, eur, forSelect, itemTags, moneyInput } from './dom.js';
 import { entryRest, entryWaste, itemKey, monthWaste, rememberedWaste } from '../waste.js';
 import { startFor } from './receipt.js';
@@ -16,11 +16,39 @@ let lastAccountId = null;
 // Welche Buchung gerade aufgeklappt ist (Artikel bearbeiten).
 let openId = null;
 let editPeople = false;
+let moveTarget = null;
+let moveError = null;
 
-function itemsPanel(e, people) {
+// Buchung aendern: Datum, Kategorie, Konto, Notiz, Betrag, anderes Budget.
+function editPanel(e, lines, accounts) {
+  const others = store.budgets.filter((b) => b.id !== store.active);
+  return `<div class="entry-edit">
+    <h3 class="sub-h">Buchung ändern</h3>
+    <div class="entry-edit-grid">
+      <label>Datum<input type="date" data-action="entry-field" data-key="${esc(e.id)}:date" value="${esc(e.date)}"></label>
+      <label>Kategorie<select data-action="entry-field" data-key="${esc(e.id)}:lineId">
+        ${lines.some((l) => l.id === e.lineId) ? '' : '<option value="" selected>Ohne Kategorie</option>'}
+        ${lines.map((l) => `<option value="${esc(l.id)}" ${l.id === e.lineId ? 'selected' : ''}>${esc(l.name || 'ohne Namen')}</option>`).join('')}</select></label>
+      ${accounts.length ? `<label>Konto<select data-action="entry-field" data-key="${esc(e.id)}:accountId"><option value="">ohne Konto</option>
+        ${accounts.map((a) => `<option value="${esc(a.id)}" ${a.id === e.accountId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>` : ''}
+      <label>Notiz<input type="text" data-action="entry-field" data-key="${esc(e.id)}:note" value="${esc(e.note || '')}" autocomplete="off"></label>
+      <label>Betrag${moneyInput({ action: 'entry-field', key: `${e.id}:amount`, value: e.amount, label: 'Betrag' })}</label>
+    </div>
+    ${others.length ? `<div class="entry-move">
+      <label>In anderes Budget verschieben<select data-action="entry-move-target" data-key="${esc(e.id)}">
+        <option value="">– Budget wählen –</option>${others.map((b) => `<option value="${esc(b.id)}" ${moveTarget === b.id ? 'selected' : ''}>${esc(b.name)}${b.shared ? ' (gemeinsam)' : ''}</option>`).join('')}</select></label>
+      <button type="button" class="btn" data-action="entry-move" data-key="${esc(e.id)}" ${moveTarget ? '' : 'disabled'}>Verschieben</button>
+      ${moveError ? `<p class="form-error">${esc(moveError)}</p>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+
+function itemsPanel(e, people, lines, accounts) {
   const items = e.items || [];
   const rest = entryRest(e);
   return `<div class="items">
+    ${editPanel(e, lines, accounts)}
+    <h3 class="sub-h">Artikel</h3>
     ${items.length ? `<p class="item-legend">Haken = unnötig · 🏷 im Angebot · 📦 auf Vorrat · 🎁 Geschenk · für wen · Name und Preis lassen sich korrigieren</p><ul class="item-list receipt-items">${items.map((it) => `
       <li class="item${it.waste ? ' is-waste' : ''}">
         <input type="checkbox" class="waste-check" data-action="item-waste" data-key="${esc(e.id)}:${esc(it.id)}" ${it.waste ? 'checked' : ''}
@@ -132,18 +160,18 @@ export function render({ data, key, account }) {
         const count = (e.items || []).length;
         return `
         <li class="entry${e.waste ? ' is-waste' : ''}">
-          <span class="entry-cat">${esc(names[e.lineId] || 'Ohne Kategorie')}</span>
+          <button type="button" class="entry-cat" data-action="entry-open" data-key="${esc(e.id)}" title="Kategorie ändern">${esc(names[e.lineId] || 'Ohne Kategorie')}</button>
           <span class="entry-note">${esc(e.note)}${e.accountId && accountNames[e.accountId] ? ` <span class="muted small">· ${esc(accountNames[e.accountId])}</span>` : ''}</span>
           <span class="entry-amount">${eur(e.amount)}</span>
           <div class="entry-actions">
             <button type="button" class="tag${e.waste ? ' on' : ''}" data-action="entry-waste" data-key="${esc(e.id)}" aria-pressed="${!!e.waste}">${e.waste ? 'unnötig' : 'unnötig?'}</button>
             ${forSelect('entry-for', e.id, e.forWhom || '', people)}
             <button type="button" class="tag${e.gift ? ' on gift' : ''}" data-action="entry-gift" data-key="${esc(e.id)}" aria-pressed="${!!e.gift}" title="Geschenk">🎁</button>
-            <button type="button" class="tag" data-action="entry-open" data-key="${esc(e.id)}" aria-expanded="${openId === e.id}">Artikel${count ? ` (${count})` : ''}</button>
+            <button type="button" class="tag" data-action="entry-open" data-key="${esc(e.id)}" aria-expanded="${openId === e.id}">✎ Bearbeiten${count ? ` · ${count} Artikel` : ''}</button>
             ${waste && !e.waste ? `<span class="waste-part">davon unnötig ${eur(waste)}</span>` : ''}
             <button type="button" class="del" data-action="entry-del" data-key="${esc(e.id)}" aria-label="Buchung löschen" title="Buchung löschen">×</button>
           </div>
-          ${openId === e.id ? itemsPanel(e, people) : ''}
+          ${openId === e.id ? itemsPanel(e, people, lines, accounts) : ''}
         </li>`;
       }).join('')}</ul>
     </li>`).join('');
@@ -153,8 +181,8 @@ export function render({ data, key, account }) {
 
   return `
   <article class="card scan-teaser">
-    <div><h2>Kassenbon scannen</h2>
-      <p class="hint">Foto machen – die App liest die Artikel, du markierst, was unnötig war.</p></div>
+    <div><h2>Kassenbon oder Rechnung</h2>
+      <p class="hint">Foto machen oder PDF (eBon, Rechnung) wählen – die App liest die Artikel, du markierst, was unnötig war.</p></div>
     <div class="btn-row">
       <button type="button" class="btn" data-action="goto" data-view="shopping">🛒 Regelmäßige Einkäufe</button>
       <button type="button" class="btn" data-action="goto" data-view="offers">🏷 Angebote</button>
@@ -246,6 +274,38 @@ export const actions = {
       data.people = peopleOf(data).filter((p) => p !== el.dataset.key);
     });
   },
+  'entry-field'(el) {
+    const [id, field] = el.dataset.key.split(':');
+    let value = el.value;
+    if (field === 'amount') {
+      value = parseMoney(value);
+      if (value == null || value <= 0) return;
+    }
+    if (field === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
+    update((data) => {
+      const entry = data.log.find((e) => e.id === id);
+      if (!entry) return;
+      if (field === 'note') entry.note = value.trim();
+      else if ((field === 'accountId' || field === 'lineId') && !value) delete entry[field];
+      else entry[field] = value;
+    });
+  },
+  'entry-move-target'(el, _event, ctx) {
+    moveTarget = el.value || null;
+    moveError = null;
+    ctx.rerender();
+  },
+  'entry-move'(el, _event, ctx) {
+    const target = store.budgets.find((b) => b.id === moveTarget);
+    if (!target || !window.confirm(`Diese Buchung nach „${target.name}" verschieben?`)) return;
+    moveError = moveEntry(el.dataset.key, moveTarget);
+    if (!moveError) {
+      openId = null;
+      moveTarget = null;
+      store.cloud.notice = `Buchung nach „${target.name}" verschoben. Dort bitte die Kategorie prüfen.`;
+    }
+    ctx.rerender();
+  },
   'entry-gift'(el) {
     update((data) => {
       const entry = data.log.find((e) => e.id === el.dataset.key);
@@ -273,8 +333,9 @@ export const actions = {
   },
   'entry-open'(el, _event, ctx) {
     openId = openId === el.dataset.key ? null : el.dataset.key;
-    if (openId) ctx.focus(`form[data-key="${openId}"] input[name="name"]`);
-    else ctx.rerender();
+    moveTarget = null;
+    moveError = null;
+    ctx.rerender();
   },
   // Beim Verlassen des Namensfelds: Kennt die App den Artikel schon?
   'item-hint'(el, _event, { data }) {
