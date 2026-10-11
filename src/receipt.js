@@ -106,7 +106,8 @@ export function parseReceipt(text) {
   }
 
   const sum = items.reduce((s, i) => s + i.amount, 0);
-  return { shop, date, total: total ?? (sum || null), items, sum };
+  // printedTotal: die Summe, die wirklich auf dem Bon steht (sonst null).
+  return { shop, date, total: total ?? (sum || null), printedTotal: total, items, sum };
 }
 
 // Kassen drucken GROSS. "KORO ERDNUSSBUTTER" liest sich als
@@ -152,4 +153,106 @@ export function joinParts(texts) {
     lines = lines.concat(next.slice(overlap));
   }
   return lines.join('\n');
+}
+
+// Ist das dieselbe Bonzeile, nur auf zwei Fotos (und vielleicht angeschnitten
+// oder leicht anders gelesen)? Der Preis zaehlt mehr als der Name.
+function sameLine(a, b) {
+  const na = roughLine(a.name);
+  const nb = roughLine(b.name);
+  const nameLoose = similarLoose(na, nb);
+  if (a.amount === b.amount) return nameLoose || na.length < 4 || nb.length < 4;
+  // Preis leicht verlesen (1,99 / 1,98), Name aber eindeutig gleich.
+  return similar(na, nb) && Math.abs(a.amount - b.amount) <= Math.max(10, a.amount * 0.1);
+}
+
+// Locker aehnlich: angeschnittene Zeilen ("üsse" statt "nüsse") oder
+// hoechstens jedes zweite Zeichen anders.
+function similarLoose(a, b) {
+  if (!a || !b) return false;
+  if (a.length >= 3 && b.length >= 3 && (a.includes(b) || b.includes(a))) return true;
+  const [s, l] = a.length <= b.length ? [a, b] : [b, a];
+  if (s.length >= 4 && (l.endsWith(s.slice(-4)) || l.startsWith(s.slice(0, 4)))) return true;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i += 1) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = row;
+  }
+  return prev[b.length] <= Math.max(a.length, b.length) / 2;
+}
+
+// Mehrere Fotos eines Bons: jedes Foto einzeln lesen, Artikel aneinander-
+// haengen und am Uebergang doppelte Zeilen (Ueberlappung) nur einmal zaehlen.
+// Jeder Artikel weiss, von welchem Foto er stammt (part).
+export function parseParts(texts) {
+  const parsed = texts.map((t) => parseReceipt(t));
+  const items = [];
+  const boundaries = [];
+  parsed.forEach((r, part) => {
+    let next = r.items.map((it) => ({ ...it, part }));
+    if (part > 0 && items.length) {
+      // Laengste Ueberlappung: letzte k Artikel = erste k Artikel.
+      let overlap = 0;
+      for (let k = Math.min(6, items.length, next.length); k > 0; k -= 1) {
+        const tail = items.slice(-k);
+        if (tail.every((it, i) => sameLine(it, next[i]))) { overlap = k; break; }
+      }
+      boundaries.push({ part, index: items.length, removed: next.slice(0, overlap) });
+      next = next.slice(overlap);
+    }
+    items.push(...next);
+  });
+  const printedTotal = parsed.map((r) => r.printedTotal).find((t) => t != null) ?? null;
+  // Gegenprobe mit der Summe: Fehlt nach dem Entfernen genau eine entfernte
+  // Zeile, war sie doch echt (z. B. zweimal dieselben Nuesse gekauft).
+  let sum = items.reduce((s, i) => s + i.amount, 0);
+  if (printedTotal != null && sum < printedTotal) {
+    for (const b of [...boundaries].reverse()) {
+      for (const it of b.removed) {
+        if (sum + it.amount <= printedTotal && printedTotal - sum === it.amount) {
+          items.splice(b.index, 0, it);
+          sum += it.amount;
+          b.restored = (b.restored || 0) + 1;
+        }
+      }
+    }
+  }
+  for (const b of boundaries) b.removed = b.removed.length - (b.restored || 0);
+  return {
+    shop: parsed.find((r) => r.shop)?.shop || '',
+    date: parsed.map((r) => r.date).find(Boolean) || null,
+    total: printedTotal ?? (sum || null),
+    printedTotal,
+    items,
+    sum,
+    boundaries,
+  };
+}
+
+// Nachrechnen: Ergeben die Artikel die Summe auf dem Bon? Wenn nicht, welche
+// Zeile ist vermutlich doppelt (zu viel) - bevorzugt am Foto-Uebergang oder
+// direkt hintereinander gleich?
+export function checkSum(items, total) {
+  const sum = items.reduce((s, i) => s + (i.amount || 0), 0);
+  if (!total) return { status: 'unknown', sum, diff: 0, suspects: [] };
+  const diff = sum - total;
+  if (diff === 0) return { status: 'ok', sum, diff, suspects: [] };
+  if (diff < 0) return { status: 'missing', sum, diff, suspects: [] };
+  const score = (i) => {
+    const it = items[i];
+    const prev = items[i - 1];
+    let s = 0;
+    if (prev && prev.part !== it.part) s += 2; // erste Zeile eines neuen Fotos
+    if (prev && sameLine(prev, it)) s += 2; // gleiche Zeile direkt davor
+    if (items.some((o, j) => j !== i && o.amount === it.amount && similarLoose(roughLine(o.name), roughLine(it.name)))) s += 1;
+    return s;
+  };
+  const suspects = items
+    .map((it, i) => i)
+    .filter((i) => items[i].amount === diff)
+    .sort((a, b) => score(b) - score(a));
+  return { status: 'over', sum, diff, suspects };
 }
