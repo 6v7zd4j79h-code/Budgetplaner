@@ -128,14 +128,16 @@ in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
   mit dem üblichen Bon-Preis. Prüft einmal pro Kalenderwoche automatisch beim
   Öffnen; Ergebnis nur im localStorage. Einstellungen in `data.offerSettings`.
   Mareikes Wunsch: PLZ 56759 (Kaisersesch = ALDI SÜD), Läden ALDI SÜD, Lidl,
-  EDEKA, REWE, Rossmann, dm, TEDi, CENTERSHOP; viel Bio (ALDI „Nur Nur
+  EDEKA, REWE, Penny, Netto, Kaufland, HIT, Globus, Rossmann, dm, TEDi,
+  CENTERSHOP (alle vorab angehakt; Woolworth, Thomas Philipps, Mäc-Geiz,
+  Pfennigpfeiffer u. a. wählbar); viel Bio (ALDI „Nur Nur
   Natur“), Schokolade nur hochwertig. PLZ steht bewusst nicht im Code –
   einmal in der App eintragen.
 - **Noch nicht mit echten Daten geprüft:** Die Cloud-Sitzung durfte
   marktguru.de nicht erreichen; getestet mit nachgebauten Antworten. Erster
   echter Test nach dem Deploy (oder `npm run dev` am Mac).
-- Offen: „Hauptladen“ (Diktat unklar – Penny? Netto?), Schulferien RLP
-  automatisch.
+- Offen: ein Laden in der Nähe, dessen Name Mareike entfallen ist („Name
+  ist Programm“?), Schulferien RLP automatisch.
 - 81 Tests grün, im Browser (Handy + Desktop) geprüft.
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.

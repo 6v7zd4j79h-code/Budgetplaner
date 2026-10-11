@@ -28,15 +28,20 @@ export const SHOPS = [
   { id: 'kaufland', name: 'Kaufland', match: /kaufland/i },
   { id: 'norma', name: 'Norma', match: /\bnorma\b/i },
   { id: 'globus', name: 'Globus', match: /\bglobus\b/i },
+  { id: 'hit', name: 'HIT', match: /^hit\b|\bhit[\s-]*markt/i },
   { id: 'rossmann', name: 'Rossmann', match: /rossmann/i },
   { id: 'dm', name: 'dm', match: /^dm\b|dm[\s-]*drogerie/i },
   { id: 'mueller', name: 'Müller', match: /m(ü|ue)ller/i },
   { id: 'tedi', name: 'TEDi', match: /\btedi\b/i },
   { id: 'centershop', name: 'CENTERSHOP', match: /center[\s-]*shop/i },
   { id: 'action', name: 'Action', match: /^action\b/i },
+  { id: 'woolworth', name: 'Woolworth', match: /woolworth/i },
+  { id: 'thomas-philipps', name: 'Thomas Philipps', match: /thomas[\s-]*philipps/i },
+  { id: 'maec-geiz', name: 'Mäc-Geiz', match: /m(ä|ae)c[\s-]*geiz/i },
+  { id: 'pfennigpfeiffer', name: 'Pfennigpfeiffer', match: /pfennigpfeiffer/i },
 ];
 
-export const DEFAULT_SHOPS = ['aldi-sued', 'lidl', 'edeka', 'rewe', 'rossmann', 'dm'];
+export const DEFAULT_SHOPS = ['aldi-sued', 'lidl', 'edeka', 'rewe', 'penny', 'netto', 'kaufland', 'hit', 'globus', 'rossmann', 'dm', 'tedi', 'centershop'];
 
 export function offerSettings(data) {
   const s = data.offerSettings || {};

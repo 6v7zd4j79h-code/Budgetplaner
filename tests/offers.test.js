@@ -104,6 +104,10 @@ test('Bio, Qualitaet und Laden erkennen', () => {
   assert.equal(shopOf(o('x', '', 'dm-drogerie markt')).id, 'dm');
   assert.equal(shopOf(o('x', '', 'E center')).id, 'edeka');
   assert.equal(shopOf(o('x', '', 'Globus Baumarkt')).id, 'globus');
+  assert.equal(shopOf(o('x', '', 'HIT')).id, 'hit');
+  assert.equal(shopOf(o('x', '', 'Netto Marken-Discount')).id, 'netto');
+  assert.equal(shopOf(o('x', '', 'Thomas Philipps')).id, 'thomas-philipps');
+  assert.equal(shopOf(o('x', '', 'White Hit Records')), null);
 });
 
 const offer = (id, title, price, retailer, extra = {}) => ({
