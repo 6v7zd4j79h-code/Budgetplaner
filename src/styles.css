@@ -946,3 +946,5 @@ input[type=month] { min-height: 40px; }
 .sum-check.warn { background: color-mix(in srgb, var(--neg) 12%, transparent); color: var(--text); border: 1px solid color-mix(in srgb, var(--neg) 40%, transparent); }
 .part-break { list-style: none; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; border-top: 2px dashed var(--border); padding-top: 6px; margin-top: 4px; }
 .item.is-suspect { outline: 2px solid var(--neg); outline-offset: 3px; border-radius: 8px; }
+.item-tags .tag.more { border-style: dashed; }
+.item-tags .pill.small { align-self: center; }

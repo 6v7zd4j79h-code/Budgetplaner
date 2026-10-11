@@ -1,6 +1,7 @@
 // Kleine Helfer fuer die Ansichten.
 
 import { centsToInput, formatCents } from '../money.js';
+import { DIETS } from '../spending.js';
 
 export function esc(value) {
   return String(value ?? '')
@@ -34,12 +35,32 @@ export function forSelect(action, key, value, people) {
     ${value && !known ? `<option value="${esc(value)}" selected>für ${esc(value)}</option>` : ''}</select>`;
 }
 
-// Haken fuer einen Artikel: im Angebot / auf Vorrat / Geschenk, dazu fuer wen.
-export function itemTags(action, key, item, people) {
+// Haken fuer einen Artikel: im Angebot / auf Vorrat / Geschenk, dazu fuer
+// wen, spezielle Ernaehrung und eine eigene Kategorie (z. B. Kleidung im
+// Lebensmitteleinkauf).
+export function itemTags(action, key, item, people, lines = [], open = false) {
+  const lineName = lines.find((l) => l.id === item.lineId)?.name;
+  const diet = DIETS.find((d) => d.id === item.diet);
+  // Eingeklappt: nur zeigen, was gesetzt ist - lange Bons bleiben uebersichtlich.
+  if (!open) {
+    const set = [
+      item.deal && '🏷 Angebot', item.stock && '📦 Vorrat', item.gift && '🎁 Geschenk',
+      item.forWhom && `für ${esc(item.forWhom)}`, diet && `🥗 ${esc(diet.name)}`, lineName && `📂 ${esc(lineName)}`,
+    ].filter(Boolean);
+    return `<span class="item-tags">
+      ${set.map((t) => `<span class="pill small">${t}</span>`).join('')}
+      <button type="button" class="tag more" data-action="${action}-more" data-key="${esc(key)}" aria-expanded="false">＋ ${set.length ? 'ändern' : 'mehr'}</button>
+    </span>`;
+  }
   return `<span class="item-tags">
     <button type="button" class="tag${item.deal ? ' on' : ''}" data-action="${action}" data-key="${esc(key)}:deal" aria-pressed="${!!item.deal}">🏷 Angebot</button>
     <button type="button" class="tag${item.stock ? ' on' : ''}" data-action="${action}" data-key="${esc(key)}:stock" aria-pressed="${!!item.stock}">📦 Vorrat</button>
     <button type="button" class="tag${item.gift ? ' on' : ''}" data-action="${action}" data-key="${esc(key)}:gift" aria-pressed="${!!item.gift}">🎁 Geschenk</button>
     ${forSelect(`${action}-for`, key, item.forWhom || '', people)}
+    <select class="for-select${item.diet ? ' set' : ''}" data-action="${action}-diet" data-key="${esc(key)}" aria-label="Spezielle Ernährung">
+      <option value="">🥗 Ernährung?</option>${DIETS.map((d) => `<option value="${d.id}" ${d.id === item.diet ? 'selected' : ''}>🥗 ${esc(d.name)}</option>`).join('')}</select>
+    ${lines.length ? `<select class="for-select${item.lineId ? ' set' : ''}" data-action="${action}-line" data-key="${esc(key)}" aria-label="Kategorie des Artikels">
+      <option value="">📂 Kategorie wie Einkauf</option>${lines.map((l) => `<option value="${esc(l.id)}" ${l.id === item.lineId ? 'selected' : ''}>📂 ${esc(l.name || 'ohne Namen')}</option>`).join('')}</select>` : ''}
+    <button type="button" class="tag more" data-action="${action}-more" data-key="${esc(key)}" aria-expanded="true">✓ fertig</button>
   </span>`;
 }

@@ -60,3 +60,22 @@ test('Einzelne Artikel mit eigener Person, Geschenke', async () => {
   assert.equal(g.total, 4499);
   assert.deepEqual(g.items.map((i) => [i.name, i.forWhom]), [['Online-Bestellung', 'Partner'], ['Lego', 'Kinder']]);
 });
+
+test('Spezielle Ernaehrung: Vorschlag aus dem Namen und Monatsuebersicht', async () => {
+  const { guessDiet, monthDiet } = await import('../src/spending.js');
+  assert.equal(guessDiet('Protein Riegel Cookie'), 'protein');
+  assert.equal(guessDiet('Glutenfreie Nudeln'), 'glutenfrei');
+  assert.equal(guessDiet('Nudeln glutenfrei'), 'glutenfrei');
+  assert.equal(guessDiet('Milch laktosefrei'), 'laktosefrei');
+  assert.equal(guessDiet('Butter'), null);
+  const d = monthDiet([
+    { id: '1', date: '2026-10-02', amount: 900, note: 'dm', items: [
+      { id: 'a', name: 'Proteinriegel', amount: 199, diet: 'protein' },
+      { id: 'b', name: 'Proteinriegel', amount: 199, diet: 'protein' },
+      { id: 'c', name: 'Brot glutenfrei', amount: 349, diet: 'glutenfrei' },
+      { id: 'd', name: 'Butter', amount: 153 },
+    ] },
+  ], '2026-10');
+  assert.equal(d.total, 747);
+  assert.deepEqual(d.rows.map((r) => [r.name, r.amount]), [['Protein / Sport', 398], ['Glutenfrei', 349]]);
+});

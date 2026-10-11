@@ -259,3 +259,13 @@ test('Artikel werden wiedererkannt, auch mit anderer Schreibweise und Menge', ()
   assert.equal(rememberedWaste(rules, 'Milch'), false);
   assert.equal(rememberedWaste(rules, 'Brot'), null);
 });
+
+test('Artikel mit eigener Kategorie zaehlen im Budget dort (Schlafanzug im Lebensmitteleinkauf)', async () => {
+  const { expenseActuals } = await import('../src/budget.js');
+  const month = { lines: { expenses: [{ id: 'leb', name: 'Lebensmittel' }, { id: 'kl', name: 'Kleidung' }] } };
+  const log = [{ id: '1', date: '2026-10-05', lineId: 'leb', amount: 5000, items: [
+    { id: 'a', name: 'Kinderschlafanzug', amount: 1299, lineId: 'kl' },
+    { id: 'b', name: 'Milch', amount: 119 },
+  ] }];
+  assert.deepEqual(expenseActuals(month, log, '2026-10'), { byLine: { leb: 3701, kl: 1299 }, uncategorized: 0 });
+});

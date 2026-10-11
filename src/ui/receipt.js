@@ -10,18 +10,29 @@ import { isPdf } from '../pdf-lines.js';
 import { update } from '../store.js';
 import { itemKey, rememberedWaste } from '../waste.js';
 import { esc, eur, itemTags, moneyInput } from './dom.js';
-import { peopleOf } from '../spending.js';
+import { guessDiet, peopleOf } from '../spending.js';
 
 let scan = null;
 // Von aussen gesetzt, wenn der Scan zu einer bestimmten Buchung gehoert.
 let presetEntryId = null;
+// Artikel, deren Haken gerade aufgeklappt sind.
+const openTags = new Set();
 
 export function startFor(entryId) {
   presetEntryId = entryId;
   scan = null;
 }
 
+// Was die App ueber einen Artikel schon weiss: unnoetig? spezielle Ernaehrung?
+function withMemory(item, data) {
+  const key = itemKey(item.name);
+  const rules = data.dietRules || {};
+  const diet = Object.prototype.hasOwnProperty.call(rules, key) ? rules[key] : guessDiet(item.name);
+  return { ...item, waste: !diet && rememberedWaste(data.wasteRules, item.name) === true, ...(diet ? { diet } : {}) };
+}
+
 function reset() {
+  openTags.clear();
   scan = { phase: 'pick', progress: 0, status: '', imageUrl: null, error: null, parts: [] };
 }
 
@@ -161,7 +172,7 @@ function renderReview(data) {
     ${targetEntry?.items?.length ? `<label class="waste-toggle append-toggle"><input type="checkbox" data-action="receipt-append" ${scan.append ? 'checked' : ''}>
       <span>Die Buchung hat schon ${targetEntry.items.length} Artikel. Neue Artikel <strong>dazunehmen</strong> (z. B. zweiter Teil des Bons) statt ersetzen</span></label>` : ''}
 
-    <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig · 🏷 im Angebot · 📦 auf Vorrat · 🎁 Geschenk · für wen</span></h3>
+    <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig · 🏷 Angebot · 📦 Vorrat · 🎁 Geschenk · für wen · 🥗 Ernährung · 📂 eigene Kategorie</span></h3>
     ${r.items.length ? sumCheck(r) : '<p class="hint">Keine Artikel erkannt. Trag sie unten selbst ein oder versuch ein schärferes Foto.</p>'}
     <ul class="item-list receipt-items">${r.items.map((it, i) => `
       ${i > 0 && it.part != null && r.items[i - 1].part != null && it.part !== r.items[i - 1].part ? `<li class="part-break">Foto ${it.part + 1}</li>` : ''}
@@ -170,7 +181,7 @@ function renderReview(data) {
         <input type="text" class="item-name-input" data-action="receipt-item-name" data-key="${i}" value="${esc(it.name)}" aria-label="Artikel">
         ${moneyInput({ action: 'receipt-item-amount', key: String(i), value: it.amount, label: `Preis ${it.name}` })}
         <button type="button" class="del" data-action="receipt-item-del" data-key="${i}" aria-label="${esc(it.name)} entfernen">×</button>
-        ${itemTags('receipt-item-tag', String(i), it, people)}
+        ${itemTags('receipt-item-tag', String(i), it, people, lines, openTags.has(i))}
       </li>`).join('')}</ul>
     <button type="button" class="btn ghost" data-action="receipt-item-add">+ Artikel</button>
 
@@ -235,7 +246,7 @@ export const actions = {
       const parsed = parseParts(parts.map((part) => part.text));
       scan.result = {
         ...parsed,
-        items: parsed.items.map((it) => ({ ...it, waste: rememberedWaste(ctx.data.wasteRules, it.name) === true })),
+        items: parsed.items.map((it) => withMemory(it, ctx.data)),
       };
       const lines = expenseLines(ctx.data, parsed.date);
       scan.lineId = (lines.find((l) => /lebensmittel/i.test(l.name)) || lines[0])?.id;
@@ -276,6 +287,21 @@ export const actions = {
     item[tag] = !item[tag];
     ctx.rerender();
   },
+  'receipt-item-tag-more'(el, _event, ctx) {
+    const i = Number(el.dataset.key);
+    if (openTags.has(i)) openTags.delete(i); else openTags.add(i);
+    ctx.rerender();
+  },
+  'receipt-item-tag-diet'(el, _event, ctx) {
+    const item = scan.result.items[Number(el.dataset.key)];
+    item.diet = el.value || undefined;
+    if (item.diet) item.waste = false; // bewusst gekauft, nicht unnoetig
+    ctx.rerender();
+  },
+  'receipt-item-tag-line'(el, _event, ctx) {
+    scan.result.items[Number(el.dataset.key)].lineId = el.value || undefined;
+    ctx.rerender();
+  },
   'receipt-item-tag-for'(el, _event, ctx) {
     scan.result.items[Number(el.dataset.key)].forWhom = el.value || undefined;
     ctx.rerender();
@@ -297,6 +323,7 @@ export const actions = {
   },
   'receipt-item-del'(el, _event, ctx) {
     scan.result.items.splice(Number(el.dataset.key), 1);
+    openTags.clear();
     ctx.rerender();
   },
   'receipt-item-add'(_el, _event, ctx) {
@@ -305,7 +332,7 @@ export const actions = {
   },
   'receipt-save'(_el, _event, ctx) {
     const r = scan.result;
-    const items = r.items.filter((i) => i.name && i.amount > 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}), ...(i.gift ? { gift: true } : {}), ...(i.forWhom ? { forWhom: i.forWhom } : {}) }));
+    const items = r.items.filter((i) => i.name && i.amount > 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}), ...(i.gift ? { gift: true } : {}), ...(i.forWhom ? { forWhom: i.forWhom } : {}), ...(i.diet ? { diet: i.diet } : {}), ...(i.lineId && i.lineId !== scan.lineId ? { lineId: i.lineId } : {}) }));
     const total = r.total || items.reduce((s, i) => s + i.amount, 0);
     if (!total) {
       const error = document.getElementById('receiptError');
@@ -325,6 +352,9 @@ export const actions = {
     update((data) => {
       data.wasteRules = data.wasteRules || {};
       for (const item of items) data.wasteRules[itemKey(item.name)] = item.waste;
+      data.dietRules = data.dietRules || {};
+      // Auch "keine Ernaehrung" merken, damit ein abgewaehlter Vorschlag nicht wiederkommt.
+      for (const item of items) data.dietRules[itemKey(item.name)] = item.diet || null;
       const existing = scan.target !== 'new' ? data.log.find((e) => e.id === scan.target) : null;
       if (existing) {
         // Zweiter Teil eines Bons: anhaengen. Sonst ersetzen, damit derselbe
@@ -351,7 +381,7 @@ export const actions = {
     } else {
       scan.text = joinParts(scan.parts.map((p) => p.text));
       const parsed = parseParts(scan.parts.map((p) => p.text));
-      scan.result = { ...parsed, items: parsed.items.map((it) => ({ ...it, waste: rememberedWaste(ctx.data.wasteRules, it.name) === true })) };
+      scan.result = { ...parsed, items: parsed.items.map((it) => withMemory(it, ctx.data)) };
       scan.imageUrl = scan.parts.find((p) => p.imageUrl)?.imageUrl || null;
     }
     ctx.rerender();
