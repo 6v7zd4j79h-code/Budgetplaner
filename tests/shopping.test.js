@@ -54,3 +54,14 @@ test('Ohne Bons: leere Auswertung', () => {
   assert.equal(r.receipts, 0);
   assert.deepEqual(r.items, []);
 });
+
+test('ALDI SÜD vom Bon und ALDI SUED vom Kontoauszug sind derselbe Laden', () => {
+  assert.equal(shopName('ALDI SUED SAGT DANKE 1234'), 'ALDI SÜD');
+  assert.equal(shopName('ALDI SÜD'), 'ALDI SÜD');
+});
+
+test('Ausgeblendete Artikel zaehlen nicht als regelmaessig', () => {
+  const r = regularItems(LOG, { today: '2026-10-10', hidden: ['butter'] });
+  assert.deepEqual(r.items.map((i) => i.name), ['Bio Vollmilch 3,8 %']);
+  assert.deepEqual(r.hiddenItems, [{ key: 'butter', name: 'Butter' }]);
+});

@@ -745,9 +745,10 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 .regular-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; }
 .regular-item { padding: 10px 0; border-top: 1px solid var(--border); }
 .regular-item:first-child { border-top: 0; }
-.regular-head { display: flex; justify-content: space-between; gap: 12px; }
+.regular-head { display: flex; align-items: flex-start; gap: 8px; }
 .regular-name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
-.regular-price { white-space: nowrap; }
+.regular-price { white-space: nowrap; margin-left: auto; }
+.regular-head .del { margin: -4px -6px 0 0; }
 .regular-item p { margin: 2px 0 0; }
 .regular-tip { font-size: 0.88rem; }
 
@@ -784,7 +785,7 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 .target:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
 .receipt-items .item {
   grid-template-columns: 30px minmax(0, 1fr) 32px;
-  grid-template-areas: "check name del" ". price .";
+  grid-template-areas: "check name del" ". price ." ". tags .";
   padding-bottom: 6px; border-bottom: 1px solid var(--border);
 }
 .receipt-items .item > .waste-check { grid-area: check; }
@@ -793,7 +794,7 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 .receipt-items .item > .del { grid-area: del; }
 .receipt-items { gap: 8px; }
 @media (min-width: 560px) {
-  .receipt-items .item { grid-template-columns: 30px minmax(0, 1fr) 7em 32px; grid-template-areas: "check name price del"; border-bottom: 0; padding-bottom: 0; }
+  .receipt-items .item { grid-template-columns: 30px minmax(0, 1fr) 7em 32px; grid-template-areas: "check name price del" ". tags tags ."; }
 }
 .receipt-items .item input[type=text] { min-height: 40px; }
 .item.is-waste .item-name-input { color: var(--waste); }
@@ -908,3 +909,20 @@ input[type=month] { min-height: 40px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pill.points { background: #1c2c47; color: #a9c6f5; } }
 :root[data-theme="dark"] .pill.points { background: #1c2c47; color: #a9c6f5; }
 .warn-text { color: var(--neg); }
+
+.receipt-parts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.receipt-parts figure { margin: 0; width: 88px; text-align: center; }
+.receipt-parts .receipt-thumb { max-height: 140px; }
+.more-done { margin-top: 12px; }
+
+.receipt-items .item > .item-tags { grid-area: tags; display: flex; flex-wrap: wrap; gap: 6px; }
+.item-tags .tag { font-size: 0.8rem; }
+.items-actions { justify-content: space-between; }
+.link-btn.danger { color: var(--neg); }
+.append-toggle { margin-top: 8px; align-items: flex-start; }
+
+.item-tags .tag.on { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-strong); }
+
+.for-select { font-size: 0.8rem; min-height: 30px; padding: 2px 6px; border-radius: 99px; max-width: 9.5rem; color: var(--muted); }
+.for-select.set { color: var(--primary-strong); border-color: var(--primary); background: var(--primary-soft); font-weight: 600; }
+.for-card .term-chips { margin-top: 12px; }

@@ -144,9 +144,22 @@ in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
   App nicht sichtbar.
 - **Automatische Aktualisierung**: `registerSW({ immediate: true })` in
   `main.js` – nach einem Deploy lädt die App sich einmal selbst neu.
+- **Bon in mehreren Fotos** (`joinParts` in `src/receipt.js`): nach jedem
+  Foto „Bon geht weiter / ist vollständig“, Überlappung wird (fehlertolerant)
+  nur einmal gezählt; mit echter Texterkennung geprüft. ALDI SÜD/SUED wird
+  jetzt als „ALDI SÜD“ erkannt, dazu HIT, TEDi, CENTERSHOP.
+- **Bons korrigieren**: Artikel einer Buchung bearbeitbar (Name, Preis),
+  „Weiteren Bon-Teil scannen“ mit Wahl anhängen/ersetzen, „Alle
+  Bon-Artikel entfernen“ (Buchung bleibt), Warnung bei gleichem Tag + Summe.
+- **Artikel-Haken „🏷 Angebot“ und „📦 Vorrat“** (`item.deal`, `item.stock`),
+  Karte „Im Angebot & auf Vorrat“ unter Ausgaben.
+- **Für wen?** pro Buchung (`entry.forWhom`, Liste `data.people`, Vorgabe
+  mich/Partner/Kinder/Familie, änderbar), Karte „Für wen ausgegeben“.
+- **Regelmäßige Einkäufe ausblenden** (× pro Artikel, `data.regularHidden`),
+  zählt dann auch nicht mehr für die Angebote.
 - Offen: ein Laden in der Nähe, dessen Name Mareike entfallen ist („Name
   ist Programm“?), Schulferien RLP automatisch.
-- 82 Tests grün, im Browser (Handy + Desktop) geprüft.
+- 89 Tests grün, im Browser (Handy + Desktop) geprüft.
 - PR #1 am 11.10. nach main übernommen (Deploy).
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.

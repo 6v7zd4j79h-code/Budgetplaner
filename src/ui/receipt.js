@@ -5,10 +5,10 @@
 import { newId } from '../budget.js';
 import { addMonths, formatDay, todayISO } from '../dates.js';
 import { parseMoney } from '../money.js';
-import { parseReceipt } from '../receipt.js';
+import { joinParts, parseReceipt } from '../receipt.js';
 import { update } from '../store.js';
 import { itemKey, rememberedWaste } from '../waste.js';
-import { esc, eur, moneyInput } from './dom.js';
+import { esc, eur, itemTags, moneyInput } from './dom.js';
 
 let scan = null;
 // Von aussen gesetzt, wenn der Scan zu einer bestimmten Buchung gehoert.
@@ -20,7 +20,7 @@ export function startFor(entryId) {
 }
 
 function reset() {
-  scan = { phase: 'pick', progress: 0, status: '', imageUrl: null, error: null };
+  scan = { phase: 'pick', progress: 0, status: '', imageUrl: null, error: null, parts: [] };
 }
 
 // Passende Buchung zum Bon: gleicher Betrag, hoechstens 4 Tage Abstand.
@@ -44,23 +44,48 @@ function renderPick() {
     <h2>Kassenbon scannen</h2>
     <p>Fotografiere den Bon von oben, möglichst gerade und gut beleuchtet. Lange Bons gern in zwei Fotos.</p>
     <p class="privacy">🔒 Das Foto wird nur hier auf dem Gerät gelesen. Es wird weder hochgeladen noch gespeichert.</p>
-    <div class="btn-row">
-      <label class="btn primary file-btn">📷 Foto aufnehmen
+    ${photoButtons(true)}
+    <p class="hint">Langer Bon? Einfach in mehreren Fotos von oben nach unten – die App fragt nach jedem Foto, ob noch etwas fehlt.</p>
+    ${scan.error ? `<p class="form-error">${esc(scan.error)}</p>` : ''}
+    <p class="hint">Beim ersten Scan lädt die App einmalig die Texterkennung (ca. 5 MB). Danach geht es auch ohne Internet.</p>
+  </article>`;
+}
+
+function photoButtons(first) {
+  return `<div class="btn-row">
+      <label class="btn ${first ? 'primary' : ''} file-btn">📷 ${first ? 'Foto aufnehmen' : 'Nächstes Stück fotografieren'}
         <input type="file" accept="image/*" capture="environment" data-action="receipt-photo" hidden>
       </label>
       <label class="btn file-btn">Bild aus Galerie
         <input type="file" accept="image/*" data-action="receipt-photo" hidden>
       </label>
-    </div>
+    </div>`;
+}
+
+// Nach jedem Foto: Geht der Bon weiter oder ist er vollstaendig?
+function renderMore() {
+  const r = scan.result;
+  const n = scan.parts.length;
+  return `
+  <article class="card">
+    <h2>${n === 1 ? 'Foto gelesen' : `${n} Fotos gelesen`}</h2>
+    <div class="receipt-parts">${scan.parts.map((p, i) => `<figure><img class="receipt-thumb" src="${p.imageUrl}" alt="Foto ${i + 1} des Kassenbons"><figcaption class="muted small">Teil ${i + 1}</figcaption></figure>`).join('')}</div>
+    <p>${r.items.length} Artikel erkannt${r.total ? ` · <strong>Summe ${eur(r.total)} gefunden</strong> – der Bon ist wahrscheinlich vollständig` : ' · noch keine Summe gefunden'}.</p>
     ${scan.error ? `<p class="form-error">${esc(scan.error)}</p>` : ''}
-    <p class="hint">Beim ersten Scan lädt die App einmalig die Texterkennung (ca. 5 MB). Danach geht es auch ohne Internet.</p>
+    <h3 class="sub-h">Geht der Bon noch weiter?</h3>
+    <p class="hint">Fotografiere das nächste Stück von oben nach unten. Es darf ruhig ein, zwei Zeilen überlappen – doppelte Zeilen zählt die App nur einmal.</p>
+    ${photoButtons(false)}
+    <div class="btn-row more-done">
+      <button type="button" class="btn ${r.total ? 'primary' : ''}" data-action="receipt-complete">✓ Bon ist vollständig – weiter</button>
+      <button type="button" class="btn ghost" data-action="receipt-drop-part">Letztes Foto verwerfen</button>
+    </div>
   </article>`;
 }
 
 function renderReading() {
   return `
   <article class="card">
-    <h2>Bon wird gelesen …</h2>
+    <h2>${scan.parts.length ? `Teil ${scan.parts.length + 1} wird gelesen …` : 'Bon wird gelesen …'}</h2>
     ${scan.imageUrl ? `<img class="receipt-thumb" src="${scan.imageUrl}" alt="Foto des Kassenbons">` : ''}
     <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(scan.progress * 100)}">
       <div style="width:${(scan.progress * 100).toFixed(0)}%"></div></div>
@@ -77,6 +102,7 @@ function renderReview(data) {
   const matches = candidates(data.log, r.total, r.date);
   if (scan.target === undefined) scan.target = presetEntryId || matches[0]?.id || 'new';
   const preset = presetEntryId ? data.log.find((e) => e.id === presetEntryId) : null;
+  const targetEntry = scan.target && scan.target !== 'new' ? data.log.find((e) => e.id === scan.target) : null;
   const options = [...(preset && !matches.includes(preset) ? [preset] : []), ...matches];
 
   return `
@@ -101,8 +127,10 @@ function renderReview(data) {
         <span>Als neue Ausgabe buchen in
           <select data-action="receipt-field" data-key="lineId" aria-label="Kategorie">${lines.map((l) => `<option value="${esc(l.id)}" ${l.id === scan.lineId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></span></label>
     </div>
+    ${targetEntry?.items?.length ? `<label class="waste-toggle append-toggle"><input type="checkbox" data-action="receipt-append" ${scan.append ? 'checked' : ''}>
+      <span>Die Buchung hat schon ${targetEntry.items.length} Artikel. Neue Artikel <strong>dazunehmen</strong> (z. B. zweiter Teil des Bons) statt ersetzen</span></label>` : ''}
 
-    <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig</span></h3>
+    <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig · 🏷 im Angebot · 📦 auf Vorrat gekauft</span></h3>
     ${r.items.length ? '' : '<p class="hint">Keine Artikel erkannt. Trag sie unten selbst ein oder versuch ein schärferes Foto.</p>'}
     <ul class="item-list receipt-items">${r.items.map((it, i) => `
       <li class="item${it.waste ? ' is-waste' : ''}">
@@ -110,6 +138,7 @@ function renderReview(data) {
         <input type="text" class="item-name-input" data-action="receipt-item-name" data-key="${i}" value="${esc(it.name)}" aria-label="Artikel">
         ${moneyInput({ action: 'receipt-item-amount', key: String(i), value: it.amount, label: `Preis ${it.name}` })}
         <button type="button" class="del" data-action="receipt-item-del" data-key="${i}" aria-label="${esc(it.name)} entfernen">×</button>
+        ${itemTags('receipt-item-tag', String(i), it)}
       </li>`).join('')}</ul>
     <button type="button" class="btn ghost" data-action="receipt-item-add">+ Artikel</button>
 
@@ -138,6 +167,7 @@ function renderDone() {
 export function render({ data }) {
   if (!scan) reset();
   if (scan.phase === 'reading') return renderReading();
+  if (scan.phase === 'more') return renderMore();
   if (scan.phase === 'review') return renderReview(data);
   if (scan.phase === 'done') return renderDone();
   return renderPick();
@@ -147,8 +177,11 @@ export const actions = {
   async 'receipt-photo'(el, _event, ctx) {
     const file = el.files?.[0];
     if (!file) return;
-    if (scan.imageUrl) URL.revokeObjectURL(scan.imageUrl);
-    scan = { phase: 'reading', progress: 0, status: 'Bild wird vorbereitet', imageUrl: URL.createObjectURL(file) };
+    // Weitere Fotos haengen sich an die bisherigen Teile an.
+    const parts = scan.phase === 'more' ? scan.parts : [];
+    if (!parts.length) scan.parts?.forEach((part) => URL.revokeObjectURL(part.imageUrl));
+    const imageUrl = URL.createObjectURL(file);
+    scan = { phase: 'reading', progress: 0, status: 'Bild wird vorbereitet', imageUrl, parts };
     ctx.rerender();
     try {
       const { recognize } = await import('../ocr.js');
@@ -159,17 +192,21 @@ export const actions = {
         // Nicht bei jedem Prozentpunkt neu zeichnen.
         if (p - last > 0.04 || p === 1) { last = p; ctx.rerender(); }
       });
-      const parsed = parseReceipt(text);
-      scan.text = text;
+      parts.push({ text, imageUrl });
+      scan.text = joinParts(parts.map((part) => part.text));
+      scan.imageUrl = parts[0].imageUrl;
+      const parsed = parseReceipt(scan.text);
       scan.result = {
         ...parsed,
         items: parsed.items.map((it) => ({ ...it, waste: rememberedWaste(ctx.data.wasteRules, it.name) === true })),
       };
       const lines = expenseLines(ctx.data, parsed.date);
       scan.lineId = (lines.find((l) => /lebensmittel/i.test(l.name)) || lines[0])?.id;
-      scan.phase = 'review';
+      scan.phase = 'more';
     } catch (error) {
-      scan.phase = 'pick';
+      URL.revokeObjectURL(imageUrl);
+      scan.imageUrl = parts[0]?.imageUrl || null;
+      scan.phase = parts.length ? 'more' : 'pick';
       scan.error = `Der Bon konnte nicht gelesen werden (${error?.message || error}). Ist das Internet für den ersten Scan da?`;
     }
     ctx.rerender();
@@ -182,8 +219,18 @@ export const actions = {
     if (field === 'total' || field === 'date') scan.target = undefined;
     ctx.rerender();
   },
+  'receipt-append'(el, _event, ctx) {
+    scan.append = el.checked;
+    ctx.rerender();
+  },
   'receipt-target'(el, _event, ctx) {
     scan.target = el.dataset.key;
+    ctx.rerender();
+  },
+  'receipt-item-tag'(el, _event, ctx) {
+    const [index, tag] = el.dataset.key.split(':');
+    const item = scan.result.items[Number(index)];
+    item[tag] = !item[tag];
     ctx.rerender();
   },
   'receipt-item-waste'(el, _event, ctx) {
@@ -211,7 +258,7 @@ export const actions = {
   },
   'receipt-save'(_el, _event, ctx) {
     const r = scan.result;
-    const items = r.items.filter((i) => i.name && i.amount > 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste }));
+    const items = r.items.filter((i) => i.name && i.amount > 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}) }));
     const total = r.total || items.reduce((s, i) => s + i.amount, 0);
     if (!total) {
       const error = document.getElementById('receiptError');
@@ -219,13 +266,20 @@ export const actions = {
       error.hidden = false;
       return;
     }
+    // Versehentlich zweimal eingelesen? Gleicher Tag, gleiche Summe, schon mit Artikeln.
+    if (scan.target === 'new') {
+      const date = r.date || todayISO();
+      const twin = ctx.data.log.find((e) => e.date === date && e.amount === total && e.items?.length);
+      if (twin && !window.confirm(`Am ${formatDay(date)} gibt es schon einen Einkauf über ${eur(total)} mit Artikeln (${twin.note || 'ohne Notiz'}). Trotzdem noch einmal speichern?`)) return;
+    }
     update((data) => {
       data.wasteRules = data.wasteRules || {};
       for (const item of items) data.wasteRules[itemKey(item.name)] = item.waste;
       const existing = scan.target !== 'new' ? data.log.find((e) => e.id === scan.target) : null;
       if (existing) {
-        // Doppelte Artikel vermeiden, falls derselbe Bon zweimal gescannt wird.
-        existing.items = items;
+        // Zweiter Teil eines Bons: anhaengen. Sonst ersetzen, damit derselbe
+        // Bon nicht doppelt zaehlt, wenn er noch einmal gescannt wird.
+        existing.items = scan.append ? [...(existing.items || []), ...items] : items;
       } else {
         data.log.push({ id: newId(), date: r.date || todayISO(), lineId: scan.lineId, note: r.shop || 'Einkauf', amount: total, items });
       }
@@ -234,8 +288,27 @@ export const actions = {
     scan = { phase: 'done', saved: { count: items.length, waste: items.reduce((s, i) => s + (i.waste ? i.amount : 0), 0) } };
     ctx.rerender();
   },
+  'receipt-complete'(_el, _event, ctx) {
+    scan.error = null;
+    scan.phase = 'review';
+    ctx.rerender();
+  },
+  'receipt-drop-part'(_el, _event, ctx) {
+    const part = scan.parts.pop();
+    if (part) URL.revokeObjectURL(part.imageUrl);
+    if (!scan.parts.length) {
+      reset();
+    } else {
+      scan.text = joinParts(scan.parts.map((p) => p.text));
+      const parsed = parseReceipt(scan.text);
+      scan.result = { ...parsed, items: parsed.items.map((it) => ({ ...it, waste: rememberedWaste(ctx.data.wasteRules, it.name) === true })) };
+      scan.imageUrl = scan.parts[0].imageUrl;
+    }
+    ctx.rerender();
+  },
   'receipt-reset'(_el, _event, ctx) {
-    if (scan?.imageUrl) URL.revokeObjectURL(scan.imageUrl);
+    scan?.parts?.forEach((part) => URL.revokeObjectURL(part.imageUrl));
+    if (scan?.imageUrl && !scan?.parts?.length) URL.revokeObjectURL(scan.imageUrl);
     reset();
     ctx.rerender();
   },

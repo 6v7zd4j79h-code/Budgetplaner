@@ -68,3 +68,30 @@ test('Artikelnamen mit "tel", "bar" oder "tse" sind keine Fusszeilen', () => {
   const r = parseReceipt('SPUELMITTEL 1,49 A\nRHABARBER 2,99 B\nMOSTSENF 0,89 B\nTel. 06321 12345\nSUMME 5,37\n');
   assert.deepEqual(r.items.map((i) => i.amount), [149, 299, 89]);
 });
+
+test('Langer Bon in zwei Fotos: Ueberlappung wird nur einmal gezaehlt', async () => {
+  const { joinParts } = await import('../src/receipt.js');
+  const teil1 = `ALDI SÜD
+Koblenzer Str. 1
+NUR NUR NATUR MILCH 1,19 A
+BUTTER 2,29 A
+HACKFLEISCH GEM. 5,49 A
+BANANEN 1,59 A`;
+  // Zweites Foto beginnt mit den letzten zwei Zeilen des ersten - leicht anders gelesen.
+  const teil2 = `HACKFLEISCH GEM 5,49 A
+BANANEN 1.59 A
+HAFERFLOCKEN 0,89 A
+SUMME EUR 11,45`;
+  const r = parseReceipt(joinParts([teil1, teil2]));
+  assert.equal(r.shop, 'ALDI SÜD');
+  assert.equal(r.total, 1145);
+  assert.deepEqual(r.items.map((i) => i.name), ['Nur Nur Natur Milch', 'Butter', 'Hackfleisch Gem.', 'Bananen', 'Haferflocken']);
+  assert.equal(r.sum, 1145);
+});
+
+test('Zwei Fotos ohne Ueberlappung und gleiche Artikel nacheinander bleiben erhalten', async () => {
+  const { joinParts } = await import('../src/receipt.js');
+  // Zweimal Milch direkt hintereinander ist echter Kauf, kein Ueberlapp.
+  const joined = joinParts(['REWE\nMILCH 1,19 A', 'BROT 2,49 A\nSUMME 3,68']);
+  assert.deepEqual(parseReceipt(joined).items.map((i) => i.name), ['Milch', 'Brot']);
+});

@@ -7,14 +7,14 @@
 import { parseDate } from './import/csv.js';
 
 const SHOPS = [
-  'EDEKA', 'REWE', 'ALDI', 'LIDL', 'NETTO', 'PENNY', 'KAUFLAND', 'GLOBUS', 'TEGUT', 'NORMA', 'MARKTKAUF',
+  'EDEKA', 'REWE', 'ALDI SÜD', 'ALDI SUED', 'ALDI NORD', 'ALDI', 'LIDL', 'NETTO', 'PENNY', 'KAUFLAND', 'GLOBUS', 'TEGUT', 'NORMA', 'MARKTKAUF',
   'DM', 'ROSSMANN', 'MÜLLER', 'BUDNI', 'ALNATURA', "DENN'S", 'BIOMARKT', 'IKEA', 'ACTION', 'TEDI', 'KIK',
-  'DEICHMANN', 'H&M', 'PRIMARK', 'THALIA', 'HORNBACH', 'OBI', 'BAUHAUS', 'TOOM', 'APOTHEKE', 'BÄCKEREI',
+  'HIT', 'TEDI', 'CENTERSHOP', 'DEICHMANN', 'H&M', 'PRIMARK', 'THALIA', 'HORNBACH', 'OBI', 'BAUHAUS', 'TOOM', 'APOTHEKE', 'BÄCKEREI',
 ];
 
 // Schreibweise wie auf dem Ladenschild; alles andere bleibt in Grossbuchstaben.
 const SHOP_DISPLAY = {
-  DM: 'dm', ROSSMANN: 'Rossmann', MÜLLER: 'Müller', KAUFLAND: 'Kaufland', GLOBUS: 'Globus', TEGUT: 'tegut',
+  DM: 'dm', TEDI: 'TEDi', 'ALDI NORD': 'ALDI Nord', 'ALDI SUED': 'ALDI SÜD', ROSSMANN: 'Rossmann', MÜLLER: 'Müller', KAUFLAND: 'Kaufland', GLOBUS: 'Globus', TEGUT: 'tegut',
   MARKTKAUF: 'Marktkauf', ALNATURA: 'Alnatura', BIOMARKT: 'Biomarkt', ACTION: 'Action', DEICHMANN: 'Deichmann',
   PRIMARK: 'Primark', THALIA: 'Thalia', HORNBACH: 'Hornbach', BAUHAUS: 'Bauhaus', TOOM: 'toom',
   APOTHEKE: 'Apotheke', BÄCKEREI: 'Bäckerei', BUDNI: 'Budni', NORMA: 'Norma', PENNY: 'PENNY', NETTO: 'Netto',
@@ -103,4 +103,42 @@ export function parseReceipt(text) {
 function titleCase(name) {
   if (name !== name.toUpperCase()) return name;
   return name.toLowerCase().replace(/(^|[\s/-])([a-zäöü])/g, (m, pre, ch) => pre + ch.toUpperCase());
+}
+
+// Lange Bons werden in mehreren Fotos aufgenommen, von oben nach unten.
+// Die Texte werden aneinandergehaengt; Zeilen, die durch Ueberlappung am
+// Ende des einen und am Anfang des naechsten Fotos stehen, nur einmal.
+// Die Texterkennung liest dieselbe Zeile nicht immer gleich - verglichen
+// wird deshalb nur das Grobe (Buchstaben und Ziffern, ohne Gross/klein).
+const roughLine = (line) => line.toLowerCase().replace(/[^a-z0-9äöüß]/g, '');
+
+// Fast gleich: hoechstens jedes fuenfte Zeichen anders (Levenshtein).
+function similar(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > Math.max(a.length, b.length) / 5) return false;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i += 1) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = row;
+  }
+  return prev[b.length] <= Math.max(a.length, b.length) / 5;
+}
+
+export function joinParts(texts) {
+  let lines = [];
+  for (const text of texts) {
+    const next = String(text || '').split(/\r?\n/).filter((l) => l.trim());
+    let overlap = 0;
+    for (let k = Math.min(12, lines.length, next.length); k > 0; k -= 1) {
+      const tail = lines.slice(-k).map(roughLine);
+      const head = next.slice(0, k).map(roughLine);
+      if (tail.every((l, i) => similar(l, head[i]))) { overlap = k; break; }
+    }
+    lines = lines.concat(next.slice(overlap));
+  }
+  return lines.join('\n');
 }

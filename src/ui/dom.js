@@ -25,3 +25,11 @@ export function signClass(cents) {
   if (cents > 0) return 'pos';
   return '';
 }
+
+// Haken fuer einen Artikel: im Angebot gekauft / auf Vorrat gekauft.
+export function itemTags(action, key, item) {
+  return `<span class="item-tags">
+    <button type="button" class="tag${item.deal ? ' on' : ''}" data-action="${action}" data-key="${esc(key)}:deal" aria-pressed="${!!item.deal}">🏷 Angebot</button>
+    <button type="button" class="tag${item.stock ? ' on' : ''}" data-action="${action}" data-key="${esc(key)}:stock" aria-pressed="${!!item.stock}">📦 Vorrat</button>
+  </span>`;
+}

@@ -32,14 +32,14 @@ function currentCache(settings) {
 
 function results(data) {
   const settings = offerSettings(data);
-  const list = watchlist(data, regularItems(data.log));
+  const list = watchlist(data, regularItems(data.log, { hidden: data.regularHidden || [] }));
   const cache = currentCache(settings);
   return { settings, list, cache, groups: cache ? matchOffers(cache.results, list, settings) : [] };
 }
 
 async function check(data, rerender) {
   const settings = offerSettings(data);
-  const list = watchlist(data, regularItems(data.log));
+  const list = watchlist(data, regularItems(data.log, { hidden: data.regularHidden || [] }));
   if (!settings.zip || !list.length) return;
   state.busy = true;
   state.error = null;
