@@ -9,6 +9,7 @@ import { joinParts, parseReceipt } from '../receipt.js';
 import { update } from '../store.js';
 import { itemKey, rememberedWaste } from '../waste.js';
 import { esc, eur, itemTags, moneyInput } from './dom.js';
+import { peopleOf } from '../spending.js';
 
 let scan = null;
 // Von aussen gesetzt, wenn der Scan zu einer bestimmten Buchung gehoert.
@@ -96,6 +97,7 @@ function renderReading() {
 function renderReview(data) {
   const r = scan.result;
   const lines = expenseLines(data, r.date);
+  const people = peopleOf(data);
   const sum = r.items.reduce((s, i) => s + i.amount, 0);
   const waste = r.items.reduce((s, i) => s + (i.waste ? i.amount : 0), 0);
   const diff = (r.total || 0) - sum;
@@ -130,7 +132,7 @@ function renderReview(data) {
     ${targetEntry?.items?.length ? `<label class="waste-toggle append-toggle"><input type="checkbox" data-action="receipt-append" ${scan.append ? 'checked' : ''}>
       <span>Die Buchung hat schon ${targetEntry.items.length} Artikel. Neue Artikel <strong>dazunehmen</strong> (z. B. zweiter Teil des Bons) statt ersetzen</span></label>` : ''}
 
-    <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig · 🏷 im Angebot · 📦 auf Vorrat gekauft</span></h3>
+    <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig · 🏷 im Angebot · 📦 auf Vorrat · 🎁 Geschenk · für wen</span></h3>
     ${r.items.length ? '' : '<p class="hint">Keine Artikel erkannt. Trag sie unten selbst ein oder versuch ein schärferes Foto.</p>'}
     <ul class="item-list receipt-items">${r.items.map((it, i) => `
       <li class="item${it.waste ? ' is-waste' : ''}">
@@ -138,7 +140,7 @@ function renderReview(data) {
         <input type="text" class="item-name-input" data-action="receipt-item-name" data-key="${i}" value="${esc(it.name)}" aria-label="Artikel">
         ${moneyInput({ action: 'receipt-item-amount', key: String(i), value: it.amount, label: `Preis ${it.name}` })}
         <button type="button" class="del" data-action="receipt-item-del" data-key="${i}" aria-label="${esc(it.name)} entfernen">×</button>
-        ${itemTags('receipt-item-tag', String(i), it)}
+        ${itemTags('receipt-item-tag', String(i), it, people)}
       </li>`).join('')}</ul>
     <button type="button" class="btn ghost" data-action="receipt-item-add">+ Artikel</button>
 
@@ -233,6 +235,10 @@ export const actions = {
     item[tag] = !item[tag];
     ctx.rerender();
   },
+  'receipt-item-tag-for'(el, _event, ctx) {
+    scan.result.items[Number(el.dataset.key)].forWhom = el.value || undefined;
+    ctx.rerender();
+  },
   'receipt-item-waste'(el, _event, ctx) {
     scan.result.items[Number(el.dataset.key)].waste = el.checked;
     ctx.rerender();
@@ -258,7 +264,7 @@ export const actions = {
   },
   'receipt-save'(_el, _event, ctx) {
     const r = scan.result;
-    const items = r.items.filter((i) => i.name && i.amount > 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}) }));
+    const items = r.items.filter((i) => i.name && i.amount > 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}), ...(i.gift ? { gift: true } : {}), ...(i.forWhom ? { forWhom: i.forWhom } : {}) }));
     const total = r.total || items.reduce((s, i) => s + i.amount, 0);
     if (!total) {
       const error = document.getElementById('receiptError');

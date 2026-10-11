@@ -926,3 +926,5 @@ input[type=month] { min-height: 40px; }
 .for-select { font-size: 0.8rem; min-height: 30px; padding: 2px 6px; border-radius: 99px; max-width: 9.5rem; color: var(--muted); }
 .for-select.set { color: var(--primary-strong); border-color: var(--primary); background: var(--primary-soft); font-weight: 600; }
 .for-card .term-chips { margin-top: 12px; }
+.tag.on.gift { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-strong); }
+.item-tags .for-select { min-height: 28px; }

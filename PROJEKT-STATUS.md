@@ -155,11 +155,15 @@ in main/nicht deployt**) – Vorbereitung für wöchentliche Angebots-Tipps:
   Karte „Im Angebot & auf Vorrat“ unter Ausgaben.
 - **Für wen?** pro Buchung (`entry.forWhom`, Liste `data.people`, Vorgabe
   mich/Partner/Kinder/Familie, änderbar), Karte „Für wen ausgegeben“.
+- **Pro Artikel „für wen?“ und „🎁 Geschenk“** (`item.forWhom`, `item.gift`),
+  Geschenk auch für ganze Buchungen (`entry.gift`). „Für wen ausgegeben“
+  teilt Buchungen auf (Artikel mit eigener Person zählen dort, der Rest bei
+  der Buchung); Karte „🎁 Geschenke“ unter Ausgaben.
 - **Regelmäßige Einkäufe ausblenden** (× pro Artikel, `data.regularHidden`),
   zählt dann auch nicht mehr für die Angebote.
 - Offen: ein Laden in der Nähe, dessen Name Mareike entfallen ist („Name
   ist Programm“?), Schulferien RLP automatisch.
-- 89 Tests grün, im Browser (Handy + Desktop) geprüft.
+- 90 Tests grün, im Browser (Handy + Desktop) geprüft.
 - PR #1 am 11.10. nach main übernommen (Deploy).
 
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.

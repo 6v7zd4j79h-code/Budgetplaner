@@ -5,10 +5,10 @@ import { expenseActuals, logForMonth, newId } from '../budget.js';
 import { clampToMonth, formatDay, todayISO } from '../dates.js';
 import { parseMoney } from '../money.js';
 import { update } from '../store.js';
-import { esc, eur, itemTags, moneyInput } from './dom.js';
+import { esc, eur, forSelect, itemTags, moneyInput } from './dom.js';
 import { entryRest, entryWaste, itemKey, monthWaste, rememberedWaste } from '../waste.js';
 import { startFor } from './receipt.js';
-import { monthDeals, monthForWhom, peopleOf } from '../spending.js';
+import { monthDeals, monthForWhom, monthGifts, peopleOf } from '../spending.js';
 import { ALL, activeAccounts, accountsOf } from '../accounts.js';
 
 let lastLineId = null;
@@ -17,18 +17,18 @@ let lastAccountId = null;
 let openId = null;
 let editPeople = false;
 
-function itemsPanel(e) {
+function itemsPanel(e, people) {
   const items = e.items || [];
   const rest = entryRest(e);
   return `<div class="items">
-    ${items.length ? `<p class="item-legend">Haken = unnötig · 🏷 im Angebot · 📦 auf Vorrat · Name und Preis lassen sich korrigieren</p><ul class="item-list receipt-items">${items.map((it) => `
+    ${items.length ? `<p class="item-legend">Haken = unnötig · 🏷 im Angebot · 📦 auf Vorrat · 🎁 Geschenk · für wen · Name und Preis lassen sich korrigieren</p><ul class="item-list receipt-items">${items.map((it) => `
       <li class="item${it.waste ? ' is-waste' : ''}">
         <input type="checkbox" class="waste-check" data-action="item-waste" data-key="${esc(e.id)}:${esc(it.id)}" ${it.waste ? 'checked' : ''}
           aria-label="${esc(it.name)} unnötig" title="unnötig">
         <input type="text" class="item-name-input" data-action="item-name" data-key="${esc(e.id)}:${esc(it.id)}" value="${esc(it.name)}" aria-label="Artikel">
         ${moneyInput({ action: 'item-amount', key: `${e.id}:${it.id}`, value: it.amount, label: `Preis ${it.name}` })}
         <button type="button" class="del" data-action="item-del" data-key="${esc(e.id)}:${esc(it.id)}" aria-label="${esc(it.name)} entfernen">×</button>
-        ${itemTags('item-tag', `${e.id}:${it.id}`, it)}
+        ${itemTags('item-tag', `${e.id}:${it.id}`, it, people)}
       </li>`).join('')}</ul>` : '<p class="hint">Trag die Artikel ein, die du einordnen möchtest – den Rest zählt die App als nötig.</p>'}
     <form class="item-form" data-action="item-add" data-key="${esc(e.id)}">
       <input type="text" name="name" placeholder="Artikel, z. B. Gewürzmischung" aria-label="Artikel" autocomplete="off" data-action="item-hint" data-key="${esc(e.id)}" required>
@@ -60,6 +60,14 @@ function forWhomCard(f, people) {
         <input type="text" name="person" placeholder="z. B. Name eines Kindes" aria-label="Person oder Gruppe" autocomplete="off" required>
         <button type="submit" class="btn">+ Hinzufügen</button>
       </form>` : ''}
+  </article>`;
+}
+
+function giftsCard(g) {
+  if (!g.items.length) return '';
+  return `<article class="card">
+    <header class="section-head"><h2>🎁 Geschenke</h2><span class="section-sum">${eur(g.total)}</span></header>
+    <ul class="mini">${g.items.slice(0, 8).map((i) => `<li><span>${esc(i.name)}${i.forWhom ? ` <span class="muted">· für ${esc(i.forWhom)}</span>` : ''}</span><span>${eur(i.amount)}</span></li>`).join('')}</ul>
   </article>`;
 }
 
@@ -129,14 +137,13 @@ export function render({ data, key, account }) {
           <span class="entry-amount">${eur(e.amount)}</span>
           <div class="entry-actions">
             <button type="button" class="tag${e.waste ? ' on' : ''}" data-action="entry-waste" data-key="${esc(e.id)}" aria-pressed="${!!e.waste}">${e.waste ? 'unnötig' : 'unnötig?'}</button>
-            <select class="for-select${e.forWhom ? ' set' : ''}" data-action="entry-for" data-key="${esc(e.id)}" aria-label="Für wen?">
-              <option value="">für wen?</option>${people.map((p) => `<option value="${esc(p)}" ${p === e.forWhom ? 'selected' : ''}>für ${esc(p)}</option>`).join('')}
-              ${e.forWhom && !people.includes(e.forWhom) ? `<option value="${esc(e.forWhom)}" selected>für ${esc(e.forWhom)}</option>` : ''}</select>
+            ${forSelect('entry-for', e.id, e.forWhom || '', people)}
+            <button type="button" class="tag${e.gift ? ' on gift' : ''}" data-action="entry-gift" data-key="${esc(e.id)}" aria-pressed="${!!e.gift}" title="Geschenk">🎁</button>
             <button type="button" class="tag" data-action="entry-open" data-key="${esc(e.id)}" aria-expanded="${openId === e.id}">Artikel${count ? ` (${count})` : ''}</button>
             ${waste && !e.waste ? `<span class="waste-part">davon unnötig ${eur(waste)}</span>` : ''}
             <button type="button" class="del" data-action="entry-del" data-key="${esc(e.id)}" aria-label="Buchung löschen" title="Buchung löschen">×</button>
           </div>
-          ${openId === e.id ? itemsPanel(e) : ''}
+          ${openId === e.id ? itemsPanel(e, people) : ''}
         </li>`;
       }).join('')}</ul>
     </li>`).join('');
@@ -180,6 +187,7 @@ export function render({ data, key, account }) {
   ${wasteCard(waste)}
   ${forWhomCard(monthForWhom(data.log, key, people), people)}
   ${dealsCard(monthDeals(data.log, key))}
+  ${giftsCard(monthGifts(data.log, key))}
 
   <article class="card">
     <header class="section-head"><h2>Buchungen</h2><span class="section-sum">${eur(total)}</span></header>
@@ -236,6 +244,21 @@ export const actions = {
   'people-del'(el) {
     update((data) => {
       data.people = peopleOf(data).filter((p) => p !== el.dataset.key);
+    });
+  },
+  'entry-gift'(el) {
+    update((data) => {
+      const entry = data.log.find((e) => e.id === el.dataset.key);
+      if (entry) entry.gift = !entry.gift;
+    });
+  },
+  'item-tag-for'(el) {
+    const [entryId, itemId] = el.dataset.key.split(':');
+    update((data) => {
+      const item = data.log.find((e) => e.id === entryId)?.items?.find((i) => i.id === itemId);
+      if (!item) return;
+      if (el.value) item.forWhom = el.value;
+      else delete item.forWhom;
     });
   },
   'entry-waste'(el) {
