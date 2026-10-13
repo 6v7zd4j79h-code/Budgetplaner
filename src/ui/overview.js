@@ -9,6 +9,7 @@ import { monthWaste } from '../waste.js';
 import { activeAccounts, balancesSummary, loanProgress, loansOf, loansSummary, overdraftRoom } from '../accounts.js';
 import { formatDay } from '../dates.js';
 import { soonCard } from './occasions.js';
+import { mealActions, mealTeaser } from './mealsend.js';
 import { offersCard } from './offers.js';
 
 function accountsCard(data, account) {
@@ -116,6 +117,7 @@ export function render({ data, key, summary, account }) {
   ${loansCard(data, account)}
   ${soonCard(data)}
   ${offersCard(data)}
+  ${mealTeaser(data)}
   <section class="grid grid-hero">
     <article class="card hero">
       <h2>Verfügbarer Betrag</h2>
@@ -187,5 +189,5 @@ export function render({ data, key, summary, account }) {
   </section>`;
 }
 
-export const actions = {};
+export const actions = { ...mealActions };
 

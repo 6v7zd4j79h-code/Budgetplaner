@@ -8,6 +8,7 @@ import { moveEntry, store, update } from '../store.js';
 import { esc, eur, forSelect, itemTags, moneyInput } from './dom.js';
 import { entryRest, entryWaste, itemKey, monthWaste, rememberedWaste } from '../waste.js';
 import { startFor } from './receipt.js';
+import { mealActions, mealStatus, sendButton } from './mealsend.js';
 import { monthDeals, monthDiet, monthForWhom, monthGifts, peopleOf } from '../spending.js';
 import { ALL, activeAccounts, accountsOf } from '../accounts.js';
 
@@ -197,8 +198,10 @@ export function render({ data, key, account }) {
     <div class="btn-row">
       <button type="button" class="btn" data-action="goto" data-view="shopping">🛒 Regelmäßige Einkäufe</button>
       <button type="button" class="btn" data-action="goto" data-view="offers">🏷 Angebote</button>
+      ${sendButton(data, { primary: false }) || '<button type="button" class="btn" data-action="goto" data-view="shopping">🍽 Für den Essensplan</button>'}
       <button type="button" class="btn primary" data-action="goto" data-view="receipt">📷 Scannen</button>
     </div>
+    ${sendButton(data) ? mealStatus(data) : ''}
   </article>
 
   <article class="card">
@@ -236,6 +239,7 @@ export function render({ data, key, account }) {
 }
 
 export const actions = {
+  ...mealActions,
   'entry-add'(form, event, ctx) {
     event.preventDefault();
     const fields = new FormData(form);

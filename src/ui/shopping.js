@@ -2,15 +2,13 @@
 // wie oft, wo und zu welchem Preis.
 
 import { formatDay, todayISO } from '../dates.js';
-import { mealPlanItems, mealPlanText, regularItems, stockItems } from '../shopping.js';
+import { mealPlanText, regularItems, stockItems } from '../shopping.js';
 import { update } from '../store.js';
 import { esc, eur } from './dom.js';
+import { linkPanel, meal, mealActions, mealList, mealStatus, sendButton } from './mealsend.js';
 import { soonCard } from './occasions.js';
 
 const MONTHS = 6;
-
-// Auswahl fuer die Essensplan-Liste; gilt nur, solange die Seite offen ist.
-const meal = { days: 7, foodOnly: true, copied: false };
 
 function rhythm(days) {
   if (days == null) return '';
@@ -35,13 +33,14 @@ function itemRow(i) {
   </li>`;
 }
 
-// Was eingekauft wurde, als Liste zum Kopieren - z. B. in den Essensplan des
-// Familienplaners, um daraus Abendessen zu planen.
+// Was eingekauft wurde, als Liste fuer den Essensplan im Sternenplan, um
+// daraus Abendessen zu planen: per Knopf hinueberschicken oder kopieren.
 function mealCard(data) {
-  const r = mealPlanItems(data, { days: meal.days, foodOnly: meal.foodOnly });
+  const r = mealList(data);
   return `<article class="card">
     <h2>🍽 Für den Essensplan</h2>
-    <p class="muted">Was in den letzten Tagen eingekauft wurde – ohne Preise und Läden, zum Einfügen in den Familienplaner.</p>
+    <p class="muted">Was in den letzten Tagen eingekauft wurde – ohne Preise und Läden, für den Essensplan im Sternenplan.</p>
+    ${linkPanel(data)}
     <div class="btn-row">
       <label>Zeitraum <select data-action="meal-days">
         ${[3, 7, 14].map((d) => `<option value="${d}"${d === meal.days ? ' selected' : ''}>letzte ${d} Tage</option>`).join('')}
@@ -51,9 +50,11 @@ function mealCard(data) {
     ${r.items.length || r.stock.length
       ? `<pre class="meal-list">${esc(mealPlanText(r))}</pre>
         <div class="btn-row">
-          <button type="button" class="btn primary" data-action="meal-copy">${meal.copied ? '✓ Kopiert' : '📋 Liste kopieren'}</button>
-          ${typeof navigator !== 'undefined' && navigator.share ? '<button type="button" class="btn" data-action="meal-share">↗ Teilen</button>' : ''}
-        </div>`
+          ${sendButton(data)}
+          <button type="button" class="btn${sendButton(data) ? ' ghost' : ' primary'}" data-action="meal-copy">${meal.copied ? '✓ Kopiert' : '📋 Liste kopieren'}</button>
+          ${typeof navigator !== 'undefined' && navigator.share ? '<button type="button" class="btn ghost" data-action="meal-share">↗ Teilen</button>' : ''}
+        </div>
+        ${mealStatus(data)}`
       : '<p class="hint">In diesem Zeitraum keine Einkäufe mit Artikeln. Scanne einen Kassenbon, dann erscheint hier die Liste.</p>'}
   </article>`;
 }
@@ -137,9 +138,10 @@ async function copyText(text) {
   }
 }
 
-const mealText = (data) => mealPlanText(mealPlanItems(data, { days: meal.days, foodOnly: meal.foodOnly }));
+const mealText = (data) => mealPlanText(mealList(data));
 
 export const actions = {
+  ...mealActions,
   'stock-used'(el) {
     update((data) => { data.stockUsed = { ...(data.stockUsed || {}), [el.dataset.key]: todayISO() }; });
   },
