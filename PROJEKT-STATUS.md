@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser). Davor 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy). Davor 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -235,13 +235,28 @@ Am 11.10. am Mac (auf `main`, **deployt** und live geprüft):
   Konflikte zusammengeführt und gemeinsam deployt. 109 Tests grün, im
   Browser (Handy + Desktop) mit erfundenen Daten geprüft.
 
+Am 13.10. am Mac (auf `main`, **deployt**, von Mareike live bestätigt):
+- **„🍽 An den Essensplan schicken“** statt Kopieren/Einfügen: Knopf in der
+  Übersicht (Karte „Für den Essensplan“, nur wenn es Artikel gibt), unter
+  Ausgaben und auf der Essensplan-Karte (Regelmäßige Einkäufe). Schickt die
+  Liste der letzten 7 Tage (nur Lebensmittel, plus Vorrat) an den
+  **Briefkasten im Sternenplan** (`/.netlify/functions/einkauf-briefkasten`,
+  Bearer-Verbindungscode). Logik `src/mealsend.js`, UI `src/ui/mealsend.js`,
+  Schnittstelle in `docs/essensplan-briefkasten.md`.
+- Einrichtung einmal pro Budget: Verbindungscode aus dem Sternenplan in der
+  Essensplan-Karte eintragen (`data.mealPlanLink` = Adresse, Code, zuletzt
+  geschickt; Vorgabe-Adresse miras-sternenplan.netlify.app). „Liste kopieren“
+  bleibt als Notlösung.
+- Briefkasten im Projekt Sternenplan parallel gebaut und deployt; Mareike hat
+  verbunden und erfolgreich geschickt. 113 Tests grün, im Browser (Handy)
+  mit erfundenen Daten und nachgebautem Briefkasten geprüft.
+
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
 
-0. Essensplan-Liste und Vorrat-Warnung mit echten Bons ausprobieren;
-   Angebote der Woche erstmals echt (PLZ eintragen). Essensplan selbst im
-   **Projekt Sternenplan** bauen (Auftragstext liegt bei Mareike).
+0. Vorrat-Warnung mit echten Bons ausprobieren; Angebote der Woche
+   erstmals echt (PLZ eintragen). Schicken an den Essensplan läuft (13.10.).
 1. Am Mac auf budget-kompass.netlify.app **Konto erstellen**, Importdateien
    (Sept + Okt, beide Budgets, inkl. Kredite) einspielen, Gemeinschaftskonto
    **freigeben** und Klas einladen. Danach die unverschlüsselten `.json` in
@@ -265,8 +280,11 @@ Abgleich über Netlify Blobs statt Neon/Supabase (07.10.).
   Feld zum Einfügen der Liste aus „🍽 Für den Essensplan“ (Budgetplaner →
   Regelmäßige Einkäufe), eigene Gerichte mit Zutaten, Vorschläge
   „Abendessen 1/2/3“ aus dem Eingekauften und dem Vorrat. Verbrauch nur über
-  „gekocht“ im Essensplan, kein eigenes Abhaken (Mareike, 11.10.). Später
-  evtl. automatische Brücke statt Kopieren.
+  „gekocht“ im Essensplan, kein eigenes Abhaken (Mareike, 11.10.).
+  Brücke per Knopf seit 13.10. (Briefkasten im Sternenplan). Ändert sich dort
+  die Schnittstelle, muss `src/mealsend.js` mitziehen.
+- Liegt nach neuem Verbindungscode im Sternenplan der alte noch im
+  Budgetplaner, meldet der Knopf „Verbindungscode passt nicht“ → neu eintragen.
 
 - **Kopie auf dem PC** unter `Downloads/Projekte/Budgetplaner` (entpackte ZIP).
   Nur Sicherung – maßgeblich ist GitHub. Am PC weiterarbeiten:
