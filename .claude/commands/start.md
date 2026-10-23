@@ -29,3 +29,5 @@ Berichte danach kurz und konkret auf Deutsch:
 
 Halte dich kurz — maximal ein Bildschirm. Frage am Ende, woran heute
 gearbeitet werden soll, und warte auf die Antwort.
+
+Session-Status: Sobald die Session ihren Titel hat (oder nach diesem Start), mit `set_session_title` ("self") ein 🟡 vor den Titel setzen. Stand dort ✅, zurück auf 🟡. Regel: "Session-Status" in `~/.claude/CLAUDE.md`.

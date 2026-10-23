@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy). Davor 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-10-13, zweite Sitzung, abgeschlossen am 23.10. (Mac: nur Beratung, wie Klas ans Gemeinschaftskonto kommt; kein Code geändert). Davor 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy), 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -251,10 +251,31 @@ Am 13.10. am Mac (auf `main`, **deployt**, von Mareike live bestätigt):
   verbunden und erfolgreich geschickt. 113 Tests grün, im Browser (Handy)
   mit erfundenen Daten und nachgebautem Briefkasten geprüft.
 
+Am 13.10., zweite Sitzung am Mac (nur Beratung, kein Code geändert):
+- Mareike kommt nicht mehr in ihr Budgetplaner-Konto (Passwort vergessen).
+  Klas hat schon ein eigenes Konto. Geklärt: Den Einladungscode für das
+  Gemeinschaftskonto kann nur jemand erzeugen, der das Budget schon hat, also
+  Mareike. Ein Passwort lässt sich nicht zurücksetzen (Ende-zu-Ende), und eine
+  Funktion zum Ändern des Konto-Passworts gibt es nicht (nur für das
+  Budget-Schloss).
+- Die unverschlüsselten Importdateien in `~/Budgetplan-Sicherungen` sind noch
+  da (Gemeinschaftskonto und Mareike, Stand 06./07.10.).
+- `.claude/commands/start.md` und `shutdown.md`: Schritt für den
+  Session-Status (🟡/✅) ergänzt (von Mareike).
+
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
 
+0. **Klas ans Gemeinschaftskonto:** Ist Mareike noch auf einem Gerät
+   angemeldet? Ja → dort unter „Sicherung“ → „Gemeinsam nutzen“ das
+   Gemeinschaftskonto freigeben, Code erzeugen, Klas gibt ihn unter „Mit Code
+   beitreten“ ein. Nein → neues Konto anlegen (andere E-Mail, oder altes Konto
+   in Netlify Blobs löschen, nur auf ausdrücklichen Wunsch), Sicherungsdateien
+   einspielen, dann freigeben und einladen. Was nach dem 07.10. eingetragen
+   wurde, fehlt in den Dateien. Passwort im Passwort-Manager speichern.
+   Antwort von Mareike steht noch aus.
+   Mögliche Ergänzung: Konto-Passwort ändern, solange man angemeldet ist.
 0. Vorrat-Warnung mit echten Bons ausprobieren; Angebote der Woche
    erstmals echt (PLZ eintragen). Schicken an den Essensplan läuft (13.10.).
 1. Am Mac auf budget-kompass.netlify.app **Konto erstellen**, Importdateien

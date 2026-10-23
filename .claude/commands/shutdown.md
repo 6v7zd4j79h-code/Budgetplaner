@@ -38,3 +38,5 @@ Berichte am Ende auf Deutsch in vier Zeilen:
 **Wichtig:** Melde den Abschluss nur, wenn Push und interne Sicherung wirklich
 erfolgreich waren. Wenn etwas fehlschlägt, sage das deutlich, statt die
 Sitzung als gesichert zu melden.
+
+Letzter Schritt, Session-Status: mit `set_session_title` ("self") das 🟡 vorne im Titel durch ✅ ersetzen, Rest des Titels gleich lassen. Regel: "Session-Status" in `~/.claude/CLAUDE.md`.
