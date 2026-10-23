@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-13, zweite Sitzung, abgeschlossen am 23.10. (Mac: nur Beratung, wie Klas ans Gemeinschaftskonto kommt; kein Code geändert). Davor 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy), 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-10-23 (Mac: nur Session-Status-Regel in `/start` und `/shutdown` ergänzt, nicht deployt). Davor 2026-10-13, zweite Sitzung, abgeschlossen am 23.10. (Mac: nur Beratung, wie Klas ans Gemeinschaftskonto kommt; kein Code geändert). Davor 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy), 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -282,6 +282,11 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
    (Sept + Okt, beide Budgets, inkl. Kredite) einspielen, Gemeinschaftskonto
    **freigeben** und Klas einladen. Danach die unverschlüsselten `.json` in
    `~/Budgetplan-Sicherungen` löschen.
+   Die Mareike-Datei (`…mareike-sept-okt-2026.json`) enthält seit 07.10. drei
+   weitere Kredite: auxmoney/SWK (13.700 €, 200 €/Monat bis 07/2033,
+   Restschuld 12.139,85 € nur aus dem Ratenplan berechnet) und easybank
+   (Kauf 03/2024: 1.072,95 €, Kauf 07/2025: 555 €). Alte Fassung daneben als
+   `….vor-krediten.json`.
 2. Auf dem Handy anmelden und zum Home-Bildschirm hinzufügen.
 3. Bon-Scan mit echtem Handyfoto ausprobieren; CSV-Import mit echten
    Auszügen (bei unbekannter Bank nur die Kopfzeile schicken lassen).
