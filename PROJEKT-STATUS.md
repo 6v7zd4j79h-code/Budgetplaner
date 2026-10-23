@@ -275,6 +275,13 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
    einspielen, dann freigeben und einladen. Was nach dem 07.10. eingetragen
    wurde, fehlt in den Dateien. Passwort im Passwort-Manager speichern.
    Antwort von Mareike steht noch aus.
+0. **Repo auf privat stellen (dringend):** Am 23.10. sind mit den Commits
+   `f3a3660` und `de962f1` (Branch `arbeitsstand`) Kreditdetails öffentlich auf
+   GitHub gelandet. Aus der Datei sind sie wieder entfernt, in diesen beiden
+   Commits stehen sie aber noch. Mareike stellt das Repo selbst auf privat
+   (GitHub → Settings → Danger Zone → Change visibility), danach prüfen, ob
+   Netlify weiter deployt. Das Bereinigen der Historie per Force-Push hat der
+   Sicherheitsfilter von Claude Code blockiert.
    Mögliche Ergänzung: Konto-Passwort ändern, solange man angemeldet ist.
 0. Vorrat-Warnung mit echten Bons ausprobieren; Angebote der Woche
    erstmals echt (PLZ eintragen). Schicken an den Essensplan läuft (13.10.).
@@ -283,10 +290,8 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
    **freigeben** und Klas einladen. Danach die unverschlüsselten `.json` in
    `~/Budgetplan-Sicherungen` löschen.
    Die Mareike-Datei (`…mareike-sept-okt-2026.json`) enthält seit 07.10. drei
-   weitere Kredite: auxmoney/SWK (13.700 €, 200 €/Monat bis 07/2033,
-   Restschuld 12.139,85 € nur aus dem Ratenplan berechnet) und easybank
-   (Kauf 03/2024: 1.072,95 €, Kauf 07/2025: 555 €). Alte Fassung daneben als
-   `….vor-krediten.json`.
+   weitere Kredite (Einzelheiten nur in der Datei, nicht im Repo). Alte
+   Fassung daneben als `….vor-krediten.json`.
 2. Auf dem Handy anmelden und zum Home-Bildschirm hinzufügen.
 3. Bon-Scan mit echtem Handyfoto ausprobieren; CSV-Import mit echten
    Auszügen (bei unbekannter Bank nur die Kopfzeile schicken lassen).
