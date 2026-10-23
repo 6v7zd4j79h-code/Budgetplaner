@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-23 (Mac: nur Session-Status-Regel in `/start` und `/shutdown` ergänzt, nicht deployt). Davor 2026-10-13, zweite Sitzung, abgeschlossen am 23.10. (Mac: nur Beratung, wie Klas ans Gemeinschaftskonto kommt; kein Code geändert). Davor 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy), 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-10-07, abgeschlossen am 23.10. (Mac: Kredite aus PDFs in die Mareike-Importdatei, Abgleich über Netlify Blobs, gemeinsame Budgets – Inhalt siehe 07.10.; beim Abschluss kein Code geändert). Davor 2026-10-13, zweite Sitzung, abgeschlossen am 23.10. (Mac: nur Beratung, wie Klas ans Gemeinschaftskonto kommt; kein Code geändert). Davor 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy), 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
