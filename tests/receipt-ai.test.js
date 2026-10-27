@@ -69,3 +69,11 @@ test('Normalisieren: ungueltige Werte werden leer', () => {
   const n = normalize({ shop: '  REWE ', date: '09.10.2026', total_cents: -5, items: [{ name: '', amount_cents: 100 }, { name: 'Milch', amount_cents: 1.5 }] });
   assert.deepEqual(n, { shop: 'REWE', date: null, total: null, items: [{ name: 'Milch', amount: 0 }], model: MODEL });
 });
+
+test('normalize: Anzahl nur ab 2 Stueck', () => {
+  const n = normalize({ shop: 'EDEKA', date: '', total_cents: 0, items: [
+    { name: 'Schmand', amount_cents: 238, quantity: 2, article_no: '' },
+    { name: 'Bananen', amount_cents: 110, quantity: 1, article_no: '' },
+  ] });
+  assert.deepEqual(n.items, [{ name: 'Schmand', amount: 238, qty: 2 }, { name: 'Bananen', amount: 110 }]);
+});

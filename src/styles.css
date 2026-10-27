@@ -793,11 +793,14 @@ input::placeholder { color: var(--muted); opacity: 0.7; }
 }
 .receipt-items .item > .waste-check { grid-area: check; }
 .receipt-items .item > .item-name-input { grid-area: name; }
-.receipt-items .item > .money { grid-area: price; max-width: 8em; }
+.receipt-items .item > .qty-price { grid-area: price; display: flex; gap: 6px; align-items: center; }
+.qty-price .money { max-width: 8em; min-width: 0; }
+.qty-field { display: inline-flex; align-items: center; gap: 2px; color: var(--muted); font-weight: 600; }
+.qty-field .qty { width: 2.6em; text-align: center; padding-left: 4px; padding-right: 4px; }
 .receipt-items .item > .del { grid-area: del; }
 .receipt-items { gap: 8px; }
 @media (min-width: 560px) {
-  .receipt-items .item { grid-template-columns: 30px minmax(0, 1fr) 7em 32px; grid-template-areas: "check name price del" ". tags tags ."; }
+  .receipt-items .item { grid-template-columns: 30px minmax(0, 1fr) 11em 32px; grid-template-areas: "check name price del" ". tags tags ."; }
 }
 .receipt-items .item input[type=text] { min-height: 40px; }
 .item.is-waste .item-name-input { color: var(--waste); }
@@ -925,6 +928,9 @@ input[type=month] { min-height: 40px; }
 .append-toggle { margin-top: 8px; align-items: flex-start; }
 
 .item-tags .tag.on { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-strong); }
+.meal-check { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; margin-right: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.meal-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--pos); cursor: pointer; }
+.meal-check input:checked + span { color: var(--pos); }
 
 .for-select { font-size: 0.8rem; min-height: 30px; padding: 2px 6px; border-radius: 99px; max-width: 9.5rem; color: var(--muted); }
 .for-select.set { color: var(--primary-strong); border-color: var(--primary); background: var(--primary-soft); font-weight: 600; }
@@ -959,3 +965,19 @@ input[type=month] { min-height: 40px; }
 .ai-busy { background: var(--primary-soft); color: var(--primary-strong); font-weight: 600; }
 .ai-note { margin: 4px 0 8px; font-size: 0.9rem; color: var(--primary-strong); }
 .ai-offer { margin: 6px 0 10px; }
+
+/* Gruende fuer Unnoetiges: Durchgang und Erinnerung */
+.why-review { display: grid; gap: 10px; margin-top: 10px; }
+.why-review .hint { margin: 0; }
+.why-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.why-item { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.why-item.done .why-head { opacity: 0.75; }
+.why-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.why-head > span:last-child { white-space: nowrap; font-weight: 600; color: var(--waste); }
+.why-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.why-chips .tag { font-size: 0.8rem; min-height: 30px; padding: 0 10px; }
+.why-chips .tag.on { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-strong); }
+.why-sums { margin-bottom: 8px; }
+.reminder-card { border: 1px solid var(--primary); background: var(--primary-soft); }
+.reminder-card h2 { margin-top: 0; }
+.use-card .cat-row { margin-bottom: 6px; }

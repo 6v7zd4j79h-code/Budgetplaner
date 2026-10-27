@@ -7,6 +7,7 @@
 //   ALDI-Einkauf) und Geschenke sein (gift: true) - ganze Buchungen auch.
 
 import { logForMonth } from './budget.js';
+import { itemKey } from './waste.js';
 
 export const DEFAULT_PEOPLE = ['mich', 'Partner', 'Kinder', 'Familie'];
 
@@ -102,5 +103,60 @@ export function monthDiet(log, key) {
     total: items.reduce((s, i) => s + i.amount, 0),
     rows: [...byDiet].map(([diet, amount]) => ({ diet, name: dietName(diet), amount })).sort((a, b) => b.amount - a.amount),
     items: items.sort((a, b) => b.amount - a.amount),
+  };
+}
+
+// Wofuer eingekauft? Die Artikel der Bons eines Monats, aufgeteilt nach Zweck.
+// Jeder Artikel zaehlt genau einmal, in dieser Reihenfolge: Geschenk,
+// unnoetig, Essensplan, Vorrat - alles Uebrige ist Verbrauch (der Joghurt
+// zwischendurch, Zahnpasta, Klopapier), aufgeteilt nach Kategorie.
+// "Angebot" ist kein Zweck, nur der Preis - das zaehlt beim Zweck mit.
+export const USES = [
+  { id: 'use', name: 'Verbrauch', icon: '🧺' },
+  { id: 'meal', name: 'Fürs Essen (Essensplan)', icon: '🍽' },
+  { id: 'stock', name: 'Auf Vorrat', icon: '📦' },
+  { id: 'gift', name: 'Geschenke', icon: '🎁' },
+  { id: 'waste', name: 'Unnötig', icon: '✗' },
+];
+
+export function useOf(item, entry = {}) {
+  if (item.gift || entry.gift) return 'gift';
+  if (item.waste || entry.waste) return 'waste';
+  if (item.meal) return 'meal';
+  if (item.stock) return 'stock';
+  return 'use';
+}
+
+export function monthUse(log, key, names = {}) {
+  const sums = Object.fromEntries(USES.map((u) => [u.id, 0]));
+  const byLine = new Map();
+  const things = new Map();
+  let deal = 0; // davon im Angebot gekauft (egal wofuer)
+  for (const e of logForMonth(log, key)) {
+    for (const item of e.items || []) {
+      if (!(item.amount > 0)) continue;
+      const use = useOf(item, e);
+      sums[use] += item.amount;
+      if (item.deal) deal += item.amount;
+      if (use !== 'use') continue;
+      const line = names[item.lineId || e.lineId] || 'Ohne Kategorie';
+      byLine.set(line, (byLine.get(line) || 0) + item.amount);
+      const k = itemKey(item.name);
+      const t = things.get(k) || { name: item.name, amount: 0, pieces: 0 };
+      t.amount += item.amount;
+      t.pieces += Number.isInteger(item.qty) && item.qty > 1 ? item.qty : 1;
+      things.set(k, t);
+    }
+  }
+  const total = Object.values(sums).reduce((s, v) => s + v, 0);
+  return {
+    total,
+    deal,
+    rows: USES.map((u) => ({ ...u, amount: sums[u.id] })).filter((r) => r.amount > 0),
+    use: {
+      total: sums.use,
+      byLine: [...byLine].map(([name, amount]) => ({ name, amount })).sort((a, b) => b.amount - a.amount),
+      items: [...things.values()].sort((a, b) => b.amount - a.amount),
+    },
   };
 }

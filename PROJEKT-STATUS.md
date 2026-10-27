@@ -307,6 +307,30 @@ Abgleich über Netlify Blobs statt Neon/Supabase (07.10.).
 
 ## Offene Punkte / Hinweise
 
+- **Angebote als Benachrichtigung (Wunsch 27.10.):** Mareike möchte von sich
+  aus einen Hinweis bekommen („Das kaufst du jede Woche / auf Vorrat – ist im
+  Angebot“), ohne die App zu öffnen. Heute prüft die App nur beim Öffnen,
+  einmal pro Woche, und erst nach Eintragen der PLZ. Eigenes Thema.
+- **Verbrauch und Gründe für Unnötiges (Wunsch 27.10.):** In der
+  Monatsübersicht soll sichtbar sein, was „normaler Verbrauch“ ist: alles, was
+  nicht unnötig, Geschenk, Essensplan oder Vorrat ist, z. B. Joghurt
+  zwischendurch für die Kinder, Zahnpasta, Klopapier, aufgeteilt nach
+  Lebensmittel/Drogerie. Dazu bei „unnötig“ ein optionaler **Grund**:
+  Bedürfnis (z. B. Schokolade während der Periode), Ausprobieren (neuer
+  Joghurt), Angebot, Impuls … Eigene Übersicht: was diesen Monat unnötig war,
+  welche Produkte, wie oft welcher Grund. Claudes Vorschlag: Verbrauch
+  automatisch als Rest berechnen (kein eigenes Anhaken) und die vorhandene
+  Karte „Unnötig ausgegeben“ um die Gründe erweitern.
+  **Wichtig (Mareike):** Beim Anhaken von „unnötig“ fragt die App NICHTS
+  zusätzlich, das bleibt ein einfacher Haken. Die Gründe vergibt sie später,
+  wenn sie möchte, in einem eigenen Durchgang (z. B. sonntags): Liste der
+  unnötigen Artikel ohne Grund durchgehen und je einen Grund wählen.
+  Freiwillig, nie Pflicht. Den Durchgang macht sie von sich aus; zusätzlich
+  **am Monatsende ein kurzer Hinweis in der App** (beim Öffnen), z. B.: „Du
+  hast bei X unnötigen Käufen noch keinen Grund eingetragen. Willst du das
+  noch machen, bevor du es vergisst?“ – nur wenn es Artikel ohne Grund gibt,
+  wegklickbar.
+
 - **Für das Projekt Sternenplan (dort umsetzen, nicht hier):** Essensplan mit
   Feld zum Einfügen der Liste aus „🍽 Für den Essensplan“ (Budgetplaner →
   Regelmäßige Einkäufe), eigene Gerichte mit Zutaten, Vorschläge

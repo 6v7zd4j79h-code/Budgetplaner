@@ -10,6 +10,9 @@ import { itemKey } from './waste.js';
 // Was auf dem Bon steht, aber kein Artikel ist, den man "kauft".
 const SKIP = /^(pfand|leergut|einweg|mehrweg|tragetasche|tasche|tüte|tuete|papiertüte|papiertuete)\b/;
 
+// Anzahl auf dem Bon ("2 x 1,19"); fehlt sie, war es ein Stueck.
+export const qtyOf = (item) => (Number.isInteger(item?.qty) && item.qty > 1 ? item.qty : 1);
+
 const dayNumber = (iso) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 86400000;
 
 // "REWE Markt GmbH Neustadt" (aus dem Kontoauszug) und "REWE" (vom Bon)
@@ -46,17 +49,18 @@ export function regularItems(log, { today = todayISO(), months = 6, minCount = 2
       }
       stat.entries.add(entry.id);
       stat.dates.add(entry.date);
-      stat.pieces += 1;
+      const unit = Math.round(item.amount / qtyOf(item)); // Preis pro Stueck
+      stat.pieces += qtyOf(item);
       stat.spent += item.amount;
       if (entry.date >= stat.lastDate) {
         stat.lastDate = entry.date;
-        stat.lastPrice = item.amount;
+        stat.lastPrice = unit;
         stat.lastShop = shop;
         stat.name = item.name;
       }
       const at = stat.byShop.get(shop) || { shop, count: 0, lastDate: '', lastPrice: 0 };
       if (!seen.has(key)) { seen.add(key); at.count += 1; }
-      if (entry.date >= at.lastDate) { at.lastDate = entry.date; at.lastPrice = item.amount; }
+      if (entry.date >= at.lastDate) { at.lastDate = entry.date; at.lastPrice = unit; }
       stat.byShop.set(shop, at);
     }
   }
@@ -102,9 +106,9 @@ export function regularItems(log, { today = todayISO(), months = 6, minCount = 2
 // Fuer den Essensplan (z. B. im Familienplaner): was in den letzten Tagen
 // eingekauft wurde, als schlichte Liste ohne Preise, Laeden oder Konten -
 // zum Kopieren und Einfuegen. Geschenke, Pfand und Tueten fallen weg.
-// foodOnly: nur Artikel aus Kategorien wie "Lebensmittel"; Artikel ohne
-// Kategorie bleiben drin, damit nichts verloren geht.
-const FOOD = /lebensmittel|essen|nahrung|einkauf|supermarkt|getränk|getraenk|haushalt|food/i;
+// mealOnly: nur Artikel mit dem Punkt "🍽 Essensplan" (item.meal). Der wird
+// bewusst von Hand gesetzt - nicht alles Essbare ist fuer den Essensplan
+// (Broetchen fuer die Schule, ein Buch im Supermarkt-Einkauf ...).
 
 // Vorrat: was in den letzten Wochen auf Vorrat gekauft wurde - mit dem Haken
 // "Vorrat" oder mindestens BULK Stueck auf einem Bon. Die App zaehlt nicht
@@ -124,8 +128,9 @@ export function stockItems(log, { today = todayISO(), days = 42, used = {} } = {
       const key = itemKey(item.name);
       if (!key || SKIP.test(key) || item.gift || !(item.amount > 0)) continue;
       const h = here.get(key) || { key, name: item.name, pieces: 0, flagged: false, lineId: item.lineId || entry.lineId || null };
-      h.pieces += 1;
+      h.pieces += qtyOf(item);
       if (item.stock) h.flagged = true;
+      if (item.meal) h.meal = true;
       here.set(key, h);
     }
     for (const h of here.values()) {
@@ -144,10 +149,9 @@ export function stockFor(term, stock) {
   return word ? stock.find((s) => s.key.split(' ').includes(word)) || null : null;
 }
 
-export function mealPlanItems(data, { today = todayISO(), days = 7, foodOnly = true } = {}) {
+export function mealPlanItems(data, { today = todayISO(), days = 7, mealOnly = true } = {}) {
   const from = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1, +today.slice(8, 10) - (days - 1)))
     .toISOString().slice(0, 10);
-  const lineName = (date, id) => (id && data.months?.[monthKey(date)]?.lines?.expenses?.find((l) => l.id === id)?.name) || '';
   const entries = (data.log || [])
     .filter((e) => Array.isArray(e.items) && e.items.length && e.date >= from && e.date <= today && !e.gift)
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -157,10 +161,9 @@ export function mealPlanItems(data, { today = todayISO(), days = 7, foodOnly = t
     for (const item of entry.items) {
       const key = itemKey(item.name);
       if (!key || SKIP.test(key) || item.gift) continue;
-      const category = lineName(entry.date, item.lineId || entry.lineId);
-      if (foodOnly && category && !FOOD.test(category)) continue;
+      if (mealOnly && !item.meal) continue;
       const stat = byKey.get(key) || { name: item.name, count: 0 };
-      stat.count += 1;
+      stat.count += qtyOf(item);
       stat.name = item.name;
       byKey.set(key, stat);
     }
@@ -169,7 +172,7 @@ export function mealPlanItems(data, { today = todayISO(), days = 7, foodOnly = t
   // Was frueher auf Vorrat gekauft wurde und vermutlich noch da ist.
   const stock = stockItems(data.log, { today, used: data.stockUsed || {} })
     .filter((s) => s.date < from && !byKey.has(s.key))
-    .filter((s) => { const c = lineName(s.date, s.lineId); return !foodOnly || !c || FOOD.test(c); });
+    .filter((s) => !mealOnly || s.meal);
   return { from, to: today, receipts: entries.length, items, stock };
 }
 

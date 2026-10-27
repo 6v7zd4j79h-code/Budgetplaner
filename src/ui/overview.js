@@ -2,12 +2,13 @@
 // Ist, verfuegbarer Betrag, Verteilung und Ausgaben nach Kategorie.
 
 import { SECTIONS, distribution, expenseActuals, subscriptionSummary, goalProgress } from '../budget.js';
-import { monthName } from '../dates.js';
+import { formatDay, monthLabel, monthName } from '../dates.js';
 import { donut, legend, meter } from './charts.js';
 import { esc, eur, signClass } from './dom.js';
-import { monthWaste } from '../waste.js';
+import { monthWaste, wasteReminder } from '../waste.js';
+import { openWasteReview } from './log.js';
+import { update } from '../store.js';
 import { activeAccounts, balancesSummary, loanProgress, loansOf, loansSummary, overdraftRoom } from '../accounts.js';
-import { formatDay } from '../dates.js';
 import { soonCard } from './occasions.js';
 import { mealActions, mealTeaser } from './mealsend.js';
 import { offersCard } from './offers.js';
@@ -113,6 +114,7 @@ export function render({ data, key, summary, account }) {
   const waste = monthWaste(data.log, key, names);
 
   return `
+  ${reminderCard(data)}
   ${accountsCard(data, account)}
   ${loansCard(data, account)}
   ${soonCard(data)}
@@ -189,5 +191,28 @@ export function render({ data, key, summary, account }) {
   </section>`;
 }
 
-export const actions = { ...mealActions };
+// Monatsende: unnoetige Kaeufe ohne Grund? Freundlich erinnern, wegklickbar.
+function reminderCard(data) {
+  const r = wasteReminder(data.log, { off: data.wasteReminderOff || {} });
+  if (!r) return '';
+  return `<article class="card reminder-card">
+    <div><h2>💭 Gründe für Unnötiges</h2>
+      <p>Du hast bei <strong>${r.open} ${r.open === 1 ? 'unnötigen Kauf' : 'unnötigen Käufen'}</strong> im ${esc(monthLabel(r.month))} noch keinen Grund eingetragen. Willst du das noch machen, bevor du es vergisst?</p></div>
+    <div class="btn-row">
+      <button type="button" class="btn primary" data-action="waste-remind-go" data-key="${esc(r.month)}">Jetzt durchgehen</button>
+      <button type="button" class="btn ghost" data-action="waste-remind-off" data-key="${esc(r.month)}">Nicht für diesen Monat</button>
+    </div>
+  </article>`;
+}
+
+export const actions = {
+  ...mealActions,
+  'waste-remind-go'(el) {
+    openWasteReview();
+    location.hash = `#/log/${el.dataset.key}`;
+  },
+  'waste-remind-off'(el) {
+    update((data) => { data.wasteReminderOff = { ...(data.wasteReminderOff || {}), [el.dataset.key]: true }; });
+  },
+};
 

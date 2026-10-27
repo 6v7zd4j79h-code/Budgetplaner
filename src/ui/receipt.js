@@ -9,7 +9,7 @@ import { checkSum, joinParts, parseParts } from '../receipt.js';
 import { isPdf } from '../pdf-lines.js';
 import { update } from '../store.js';
 import { itemKey, rememberedWaste } from '../waste.js';
-import { esc, eur, itemTags, moneyInput } from './dom.js';
+import { esc, eur, itemTags, moneyInput, parseQty, qtyInput } from './dom.js';
 import { guessDiet, peopleOf } from '../spending.js';
 
 let scan = null;
@@ -221,7 +221,7 @@ function renderReview(data) {
     ${targetEntry?.items?.length ? `<label class="waste-toggle append-toggle"><input type="checkbox" data-action="receipt-append" ${scan.append ? 'checked' : ''}>
       <span>Die Buchung hat schon ${targetEntry.items.length} Artikel. Neue Artikel <strong>dazunehmen</strong> (z. B. zweiter Teil des Bons) statt ersetzen</span></label>` : ''}
 
-    <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig · 🏷 Angebot · 📦 Vorrat · 🎁 Geschenk · für wen · 🥗 Ernährung · 📂 eigene Kategorie</span></h3>
+    <h3 class="sub-h">Artikel <span class="muted">· Haken = unnötig · 🍽 fürs Essen (geht an den Essensplan) · Anzahl × Preis der Zeile · 🏷 Angebot · 📦 Vorrat · 🎁 Geschenk · für wen · 🥗 Ernährung · 📂 eigene Kategorie</span></h3>
     ${aiBanner()}
     ${scan.ai?.busy ? '' : r.items.length ? sumCheck(r) : '<p class="hint">Keine Artikel erkannt. Trag sie unten selbst ein oder versuch ein schärferes Foto.</p>'}
     <ul class="item-list receipt-items">${r.items.map((it, i) => `
@@ -229,7 +229,8 @@ function renderReview(data) {
       <li class="item${it.waste ? ' is-waste' : ''}${suspects.includes(i) ? ' is-suspect' : ''}${it.amount ? '' : ' is-missing'}">
         <input type="checkbox" class="waste-check" data-action="receipt-item-waste" data-key="${i}" ${it.waste ? 'checked' : ''} aria-label="${esc(it.name)} unnötig">
         <input type="text" class="item-name-input" data-action="receipt-item-name" data-key="${i}" value="${esc(it.name)}" aria-label="Artikel">
-        ${moneyInput({ action: 'receipt-item-amount', key: String(i), value: it.amount || null, label: `Preis ${it.name}`, placeholder: it.amount ? '0' : 'Preis?' })}
+        <span class="qty-price">${qtyInput({ action: 'receipt-item-qty', key: String(i), value: it.qty, label: `Anzahl ${it.name}` })}
+        ${moneyInput({ action: 'receipt-item-amount', key: String(i), value: it.amount || null, label: `Preis ${it.name}`, placeholder: it.amount ? '0' : 'Preis?' })}</span>
         <button type="button" class="del" data-action="receipt-item-del" data-key="${i}" aria-label="${esc(it.name)} entfernen">×</button>
         ${itemTags('receipt-item-tag', String(i), it, people, lines, openTags.has(i))}
       </li>`).join('')}</ul>
@@ -372,6 +373,16 @@ export const actions = {
     if (item.amount) delete item.missingPrice;
     ctx.rerender();
   },
+  'receipt-item-tag-meal'(el, _event, ctx) {
+    scan.result.items[Number(el.dataset.key)].meal = el.checked;
+    ctx.rerender();
+  },
+  'receipt-item-qty'(el, _event, ctx) {
+    const item = scan.result.items[Number(el.dataset.key)];
+    const qty = parseQty(el.value);
+    if (qty) item.qty = qty; else delete item.qty;
+    ctx.rerender();
+  },
   'receipt-item-del'(el, _event, ctx) {
     scan.result.items.splice(Number(el.dataset.key), 1);
     openTags.clear();
@@ -383,7 +394,7 @@ export const actions = {
   },
   'receipt-save'(_el, _event, ctx) {
     const r = scan.result;
-    const items = r.items.filter((i) => i.name && i.amount !== 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}), ...(i.gift ? { gift: true } : {}), ...(i.forWhom ? { forWhom: i.forWhom } : {}), ...(i.diet ? { diet: i.diet } : {}), ...(i.lineId && i.lineId !== scan.lineId ? { lineId: i.lineId } : {}) }));
+    const items = r.items.filter((i) => i.name && i.amount !== 0).map((i) => ({ id: newId(), name: i.name, amount: i.amount, waste: !!i.waste, ...(i.qty > 1 ? { qty: i.qty } : {}), ...(i.meal ? { meal: true } : {}), ...(i.deal ? { deal: true } : {}), ...(i.stock ? { stock: true } : {}), ...(i.gift ? { gift: true } : {}), ...(i.forWhom ? { forWhom: i.forWhom } : {}), ...(i.diet ? { diet: i.diet } : {}), ...(i.lineId && i.lineId !== scan.lineId ? { lineId: i.lineId } : {}) }));
     const total = r.total || items.reduce((s, i) => s + i.amount, 0);
     if (!total) {
       const error = document.getElementById('receiptError');

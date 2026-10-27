@@ -26,7 +26,8 @@ const TOTAL = /^(summe|zu zahlen|gesamt(betrag)?|total|endbetrag|endsumme|rechnu
 const SUBTOTAL = /^(zwischensumme|warenwert|nettobetrag|netto)|^(summe|gesamt\w*)\s*\(?netto/i;
 // Zeilen, die nie Artikel sind.
 const NOISE = /(mwst|mw\.?-?st|\bust\b|steuer|netto|brutto|rückgeld|rueckgeld|gegeben|\bbar\b|ec-?cash|girocard|kartenzahlung|visa|mastercard|maestro|kontaktlos|terminal|beleg|\btse\b|signatur|transaktion|kassierer|bon-?nr|filiale|vielen dank|öffnungszeiten|www\.|\btel\b\.?|ust-?id|st\.?-?nr|payback|treuepunkte|gespart|^eur$|^€$|^\*+$)/i;
-const QUANTITY = /^\s*-?\d+([.,]\d+)?\s*(x|stk|st\.?|kg)\s*[x*]?\s*\d+[.,]\d{2}/i;
+// Mengen- oder Gewichtszeile: "2 x 1,19", "2 Stk x 1,19", "0,856 kg x 1,29 EUR/kg".
+const QUANTITY = /^\s*(-?\d+(?:[.,]\d+)?)\s*(x|×|stk\.?|st\.?|kg)\s*[x×*]?\s*(\d+)[.,](\d{2})/i;
 const DISCOUNT = /(rabatt|nachlass|coupon|gutschein|aktion|preisvorteil|sie sparen|ersparnis|mitarbeiter)/i;
 
 // "8,99", "8.99", "8 ,99", "8,99-", "-1,00" am Zeilenende, gefolgt
@@ -36,6 +37,29 @@ const PRICE_AT_END = /(-?)\s*(\d{1,3}(?:\.\d{3})+|\d{1,5})\s*[.,]\s*(\d{2})\s*(-
 function toCents(sign1, euros, cents, sign2) {
   const value = Number(String(euros).replace(/\./g, '')) * 100 + Number(cents); // "1.234" = Tausenderpunkt
   return sign1 === '-' || sign2 === '-' ? -value : value;
+}
+
+// Anzahl aus einer Mengenzeile; Gewicht ("0,856 kg") ist keine Anzahl.
+function quantityLine(line) {
+  const m = line.match(QUANTITY);
+  if (!m) return null;
+  const count = /kg/i.test(m[2]) || /[.,]/.test(m[1]) ? 1 : Number(m[1]);
+  const total = line.slice(m[0].length).match(PRICE_AT_END);
+  return {
+    count: count >= 1 && count <= 99 ? count : 1,
+    unit: Number(m[3]) * 100 + Number(m[4]),
+    total: total ? toCents(total[1], total[2], total[3], total[4]) : null,
+  };
+}
+
+// Anzahl, die mit im Artikelnamen steht: "1,69 € x 4" / "0,99 x 2" (Lidl),
+// "2 x Brötchen", Rechnungstabelle "Schreibtisch 2 1.149,00 €".
+function inlineCount(head) {
+  const m = head.match(/\s\d+[.,]\d{2}\s*(?:€|eur)?\s*[x×*]\s*(\d{1,2})\s*(?:stk?\.?)?\s*$/i)
+    || head.match(/^(\d{1,2})\s*[x×*]\s+(?=[A-Za-zÄÖÜäöü])/)
+    || head.match(/\s(\d{1,2})\s+\d{1,3}(?:\.\d{3})*,\d{2}\s*(?:€|eur)?\s*$/i);
+  const n = m ? Number(m[1]) : 1;
+  return n >= 2 && n <= 99 ? n : null;
 }
 
 // Rechnungstabelle: "1 Kinderschreibtisch 1 1.149,00 €" (Pos., Artikel,
@@ -48,7 +72,8 @@ function cleanName(text) {
     .replace(INVOICE_ROW, '')
     .replace(invoiceRow ? /^\d{1,3}\s+(?=[A-Za-zÄÖÜäöü])/ : /^$/, '') // Positionsnummer
     .replace(/^\d{4,}\s+/, '') // Artikelnummer am Anfang
-    .replace(/\s+\d+[.,]\d{2}\s*(€|eur)?\s*[x*]\s*\d+([.,]\d+)?\s*$/i, '') // "1,69 € x 4" (Stueckpreis x Menge)
+    .replace(/\s+\d+[.,]\d{2}\s*(€|eur)?\s*[x×*]\s*\d+([.,]\d+)?\s*(stk?\.?)?\s*$/i, '') // "1,69 € x 4" (Stueckpreis x Menge)
+    .replace(/^\d{1,2}\s*[x×*]\s+(?=[A-Za-zÄÖÜäöü])/, '') // "2 x Brötchen"
     .replace(/\s{2,}/g, ' ')
     .replace(/[|_~]+/g, ' ')
     .replace(/\s+[A-D12*]$/i, '')
@@ -132,7 +157,11 @@ export function parseReceipt(text, { keepStorno = false } = {}) {
       return removeLast(items, artNo, rough, amount);
   };
 
-  for (const line of lines) {
+  let prevLine = -9; // Zeile des letzten Artikels
+  let pendingQty = null; // Mengenzeile, die vor ihrem Artikel steht
+  let nameOnly = null; // Zeile mit Artikelname, aber ohne Preis (Betrag kommt danach)
+
+  for (const [index, line] of lines.entries()) {
     if (!date) {
       const m = line.match(/\b(\d{1,2}\.\d{1,2}\.\d{2,4})\b/);
       if (m) date = parseDate(m[1]);
@@ -156,7 +185,27 @@ export function parseReceipt(text, { keepStorno = false } = {}) {
     }
     if (afterTotal) continue;
     if (STORNO.test(line) && !price) { storno = true; continue; }
-    if (QUANTITY.test(line)) continue; // "2 x 1,19" - der Gesamtpreis steht in der Artikelzeile
+    const qty = quantityLine(line);
+    if (qty) {
+      // "2 x 1,19" gehoert zum Artikel darueber (EDEKA, REWE, Netto ...) oder,
+      // wenn der Preis dort nicht passt, zum Artikel darunter (Kaufland & Co.).
+      // Zugeordnet wird nur, wenn Anzahl x Stueckpreis den Zeilenbetrag ergibt.
+      const prev = items[items.length - 1];
+      const want = qty.total ?? qty.count * qty.unit;
+      if (nameOnly && qty.total != null) {
+        // Name in der Zeile darueber, Betrag erst hier: "BANANEN" / "0,856 kg x 1,29 EUR/kg 1,10"
+        if (prev && prev === nameOnly.item) { prev.amount = qty.total; delete prev.missingPrice; }
+        else items.push({ name: titleCase(nameOnly.name), amount: qty.total });
+        if (qty.count > 1) items[items.length - 1].qty = qty.count;
+      } else if (prev && prevLine >= index - 2 && !prev.qty && !prev.storno && (prev.amount === want || (!prev.amount && prev.missingPrice))) {
+        if (qty.count > 1) prev.qty = qty.count;
+        if (!prev.amount) { prev.amount = want; delete prev.missingPrice; }
+      } else if (qty.count > 1) {
+        pendingQty = { ...qty, want, index };
+      }
+      nameOnly = null;
+      continue;
+    }
     if (NOISE.test(line)) continue;
 
     const head = (price ? line.slice(0, price.index) : line).replace(/^[-=~–]\s*/, '');
@@ -167,9 +216,16 @@ export function parseReceipt(text, { keepStorno = false } = {}) {
     if (!price) {
       if (storno || negative) { cancel(artNo, name, 0); storno = false; continue; }
       const m = line.match(ARTICLE_NO_PRICE);
-      if (m && /[a-zäöüß]{3,}/i.test(name)) items.push({ name: titleCase(name), amount: 0, artNo: m[1], missingPrice: true });
+      if (m && /[a-zäöüß]{3,}/i.test(name)) {
+        items.push({ name: titleCase(name), amount: 0, artNo: m[1], missingPrice: true });
+        prevLine = index;
+        nameOnly = { name, item: items[items.length - 1] };
+      } else if (/[a-zäöüß]{3,}/i.test(name) && !discountBlock) {
+        nameOnly = { name, item: null };
+      }
       continue;
     }
+    nameOnly = null;
     const amount = toCents(price[1], price[2], price[3], price[4]);
     if (storno || negative || (amount < 0 && artNo)) {
       if (!cancel(artNo, name, Math.abs(amount))) {
@@ -191,7 +247,11 @@ export function parseReceipt(text, { keepStorno = false } = {}) {
       continue;
     }
     if (!/[a-zäöüß]{2,}/i.test(name)) continue; // nur Zahlen/Zeichensalat
-    items.push({ name: titleCase(name), amount, ...(artNo ? { artNo } : {}) });
+    let count = inlineCount(head);
+    if (!count && pendingQty && pendingQty.index >= index - 2 && pendingQty.want === amount) count = pendingQty.count;
+    pendingQty = null;
+    items.push({ name: titleCase(name), amount, ...(count ? { qty: count } : {}), ...(artNo ? { artNo } : {}) });
+    prevLine = index;
   }
 
   if (total == null && bareTotal != null) total = bareTotal;

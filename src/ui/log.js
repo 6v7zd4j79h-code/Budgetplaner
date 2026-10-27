@@ -5,11 +5,11 @@ import { expenseActuals, logForMonth, newId } from '../budget.js';
 import { clampToMonth, formatDay, todayISO } from '../dates.js';
 import { parseMoney } from '../money.js';
 import { moveEntry, store, update } from '../store.js';
-import { esc, eur, forSelect, itemTags, moneyInput } from './dom.js';
-import { entryRest, entryWaste, itemKey, monthWaste, rememberedWaste } from '../waste.js';
+import { esc, eur, forSelect, itemTags, moneyInput, parseQty, qtyInput } from './dom.js';
+import { WASTE_REASONS, entryRest, entryWaste, itemKey, monthWaste, reasonOf, rememberedWaste } from '../waste.js';
 import { startFor } from './receipt.js';
 import { mealActions, mealStatus, sendButton } from './mealsend.js';
-import { monthDeals, monthDiet, monthForWhom, monthGifts, peopleOf } from '../spending.js';
+import { monthDeals, monthDiet, monthForWhom, monthGifts, monthUse, peopleOf } from '../spending.js';
 import { ALL, activeAccounts, accountsOf } from '../accounts.js';
 
 let lastLineId = null;
@@ -20,6 +20,21 @@ let editPeople = false;
 const openTags = new Set();
 let moveTarget = null;
 let moveError = null;
+// Gruende fuer Unnoetiges eintragen (Durchgang, wann Mareike moechte).
+let reviewWaste = false;
+export function openWasteReview() {
+  reviewWaste = true;
+  scrollToWaste();
+}
+
+// Nach dem Neuzeichnen zur Karte "Unnoetig ausgegeben" springen.
+function scrollToWaste(tries = 20) {
+  setTimeout(() => {
+    const card = document.getElementById('waste-card');
+    if (card?.querySelector('.why-review')) card.scrollIntoView({ block: 'start' });
+    else if (tries > 0) scrollToWaste(tries - 1);
+  }, 60);
+}
 
 // Buchung aendern: Datum, Kategorie, Konto, Notiz, Betrag, anderes Budget.
 function editPanel(e, lines, accounts) {
@@ -51,12 +66,13 @@ function itemsPanel(e, people, lines, accounts) {
   return `<div class="items">
     ${editPanel(e, lines, accounts)}
     <h3 class="sub-h">Artikel</h3>
-    ${items.length ? `<p class="item-legend">Haken = unnötig · 🏷 Angebot · 📦 Vorrat · 🎁 Geschenk · für wen · 🥗 Ernährung · 📂 eigene Kategorie (z. B. Kleidung im Lebensmitteleinkauf) · Name und Preis lassen sich korrigieren</p><ul class="item-list receipt-items">${items.map((it) => `
+    ${items.length ? `<p class="item-legend">Haken = unnötig · 🍽 fürs Essen (geht an den Essensplan) · Anzahl × Preis der Zeile · 🏷 Angebot · 📦 Vorrat · 🎁 Geschenk · für wen · 🥗 Ernährung · 📂 eigene Kategorie (z. B. Kleidung im Lebensmitteleinkauf) · Name und Preis lassen sich korrigieren</p><ul class="item-list receipt-items">${items.map((it) => `
       <li class="item${it.waste ? ' is-waste' : ''}">
         <input type="checkbox" class="waste-check" data-action="item-waste" data-key="${esc(e.id)}:${esc(it.id)}" ${it.waste ? 'checked' : ''}
           aria-label="${esc(it.name)} unnötig" title="unnötig">
         <input type="text" class="item-name-input" data-action="item-name" data-key="${esc(e.id)}:${esc(it.id)}" value="${esc(it.name)}" aria-label="Artikel">
-        ${moneyInput({ action: 'item-amount', key: `${e.id}:${it.id}`, value: it.amount, label: `Preis ${it.name}` })}
+        <span class="qty-price">${qtyInput({ action: 'item-qty', key: `${e.id}:${it.id}`, value: it.qty, label: `Anzahl ${it.name}` })}
+        ${moneyInput({ action: 'item-amount', key: `${e.id}:${it.id}`, value: it.amount, label: `Preis ${it.name}` })}</span>
         <button type="button" class="del" data-action="item-del" data-key="${esc(e.id)}:${esc(it.id)}" aria-label="${esc(it.name)} entfernen">×</button>
         ${itemTags('item-tag', `${e.id}:${it.id}`, it, people, lines, openTags.has(`${e.id}:${it.id}`))}
       </li>`).join('')}</ul>` : '<p class="hint">Trag die Artikel ein, die du einordnen möchtest – den Rest zählt die App als nötig.</p>'}
@@ -121,6 +137,22 @@ function dealsCard(d) {
   </article>`;
 }
 
+const reasonLabel = (r) => `${r.icon} ${esc(r.name)}`;
+
+// Durchgang: alle unnoetigen Kaeufe des Monats, die ohne Grund zuerst.
+function wasteReview(w) {
+  const list = [...w.items].sort((a, b) => Number(!!reasonOf(a.why)) - Number(!!reasonOf(b.why)) || b.amount - a.amount);
+  return `<div class="why-review">
+    <p class="hint">Warum hast du das gekauft? Tippe einen Grund an – oder lass ihn weg, das ist freiwillig. Nochmal tippen nimmt ihn wieder raus.</p>
+    <ul class="why-list">${list.map((i) => `
+      <li class="why-item${reasonOf(i.why) ? ' done' : ''}">
+        <div class="why-head"><span><strong>${esc(i.name)}</strong> <span class="muted small">· ${i.whole ? 'ganze Buchung' : esc(i.shop)} · ${formatDay(i.date)}</span></span><span>${eur(i.amount)}</span></div>
+        <div class="why-chips">${WASTE_REASONS.map((r) => `<button type="button" class="tag${i.why === r.id ? ' on' : ''}" data-action="waste-why" data-key="${esc(i.ref)}|${r.id}" aria-pressed="${i.why === r.id}" title="${esc(r.hint)}">${reasonLabel(r)}</button>`).join('')}</div>
+      </li>`).join('')}</ul>
+    <button type="button" class="btn primary" data-action="waste-review">✓ Fertig</button>
+  </div>`;
+}
+
 function wasteCard(w) {
   if (!w.total) {
     return `<article class="card waste-card">
@@ -129,12 +161,33 @@ function wasteCard(w) {
         um einzelne Sachen aus einem Einkauf einzuordnen – z. B. die Gewürzmischung zum Ausprobieren.</p>
     </article>`;
   }
-  return `<article class="card waste-card">
+  return `<article class="card waste-card" id="waste-card">
     <header class="section-head"><h2>Unnötig ausgegeben</h2>
       <span class="section-sum waste-sum">${eur(w.total)}</span></header>
-    <p class="muted">${Math.round(w.share * 100)} % deiner Ausgaben in diesem Monat</p>
+    <p class="muted">${Math.round(w.share * 100)} % deiner Ausgaben in diesem Monat · ${w.items.length} ${w.items.length === 1 ? 'Kauf' : 'Käufe'}</p>
     <div class="meter waste-meter" role="img" aria-label="${Math.round(w.share * 100)} Prozent unnötig"><div style="width:${Math.min(100, w.share * 100).toFixed(1)}%"></div></div>
-    <ul class="mini waste-list">${w.items.slice(0, 6).map((i) => `<li><span>${esc(i.name)}${i.whole ? '' : ` <span class="muted">· ${esc(i.shop)}</span>`}</span><span>${eur(i.amount)}</span></li>`).join('')}</ul>
+    ${reviewWaste ? wasteReview(w) : `
+    ${w.byWhy.length ? `<h3 class="sub-h">Warum?</h3>
+      <ul class="mini why-sums">${w.byWhy.map((r) => `<li><span>${reasonLabel(r)} <span class="muted">· ${r.count}×</span></span><span>${eur(r.amount)}</span></li>`).join('')}
+      ${w.open ? `<li class="muted"><span>ohne Grund · ${w.open}×</span><span></span></li>` : ''}</ul>` : ''}
+    <ul class="mini waste-list">${w.items.slice(0, 6).map((i) => `<li><span>${esc(i.name)}${i.whole ? '' : ` <span class="muted">· ${esc(i.shop)}</span>`}${reasonOf(i.why) ? ` <span class="muted">· ${reasonOf(i.why).icon}</span>` : ''}</span><span>${eur(i.amount)}</span></li>`).join('')}</ul>
+    <button type="button" class="btn${w.open ? '' : ' ghost'}" data-action="waste-review">${w.open ? `💭 Gründe eintragen (${w.open} offen)` : '💭 Gründe ansehen / ändern'}</button>`}
+  </article>`;
+}
+
+// Wofuer eingekauft: Verbrauch, Essensplan, Vorrat, Geschenke, Unnoetig.
+function useCard(u) {
+  if (!u.total) return '';
+  return `<article class="card use-card">
+    <header class="section-head"><h2>🧺 Wofür eingekauft</h2><span class="section-sum">${eur(u.total)}</span></header>
+    <p class="muted small">Alle Artikel von Kassenbons in diesem Monat, jeder genau einmal gezählt.</p>
+    <ul class="cats">${u.rows.map((r) => `<li class="cat-row"><div class="cat-head"><span>${r.icon} ${esc(r.name)}</span><span class="muted">${eur(r.amount)} · ${Math.round((r.amount / u.total) * 100)} %</span></div>
+      <div class="meter${r.id === 'waste' ? ' waste-meter' : ''}" role="img" aria-label="${Math.round((r.amount / u.total) * 100)} Prozent"><div style="width:${((r.amount / u.total) * 100).toFixed(1)}%"></div></div></li>`).join('')}</ul>
+    ${u.deal ? `<p class="muted small">🏷 Davon im Angebot gekauft: <strong>${eur(u.deal)}</strong> – Einzelheiten in „Im Angebot &amp; auf Vorrat“.</p>` : ''}
+    ${u.use.total ? `<h3 class="sub-h">🧺 Verbrauch nach Kategorie</h3>
+      <ul class="mini">${u.use.byLine.map((l) => `<li><span>${esc(l.name)}</span><span>${eur(l.amount)}</span></li>`).join('')}</ul>
+      <p class="muted small">${u.use.items.slice(0, 8).map((i) => `${esc(i.name)}${i.pieces > 1 ? ` ${i.pieces}×` : ''}`).join(' · ')}</p>` : ''}
+    <p class="hint">Verbrauch ist alles, was nicht unnötig, Geschenk, fürs Essen (🍽) oder auf Vorrat ist – z. B. Joghurt zwischendurch, Zahnpasta, Klopapier.</p>
   </article>`;
 }
 
@@ -227,6 +280,7 @@ export function render({ data, key, account }) {
   </article>` : ''}
 
   ${wasteCard(waste)}
+  ${useCard(monthUse(data.log, key, names))}
   ${forWhomCard(monthForWhom(data.log, key, people), people)}
   ${dealsCard(monthDeals(data.log, key))}
   ${giftsCard(monthGifts(data.log, key))}
@@ -430,6 +484,38 @@ export const actions = {
     update((data) => {
       const item = data.log.find((e) => e.id === entryId)?.items?.find((i) => i.id === itemId);
       if (item) item.amount = amount;
+    });
+  },
+  'waste-review'(_el, _event, ctx) {
+    reviewWaste = !reviewWaste;
+    ctx.rerender();
+    if (reviewWaste) scrollToWaste();
+  },
+  'waste-why'(el) {
+    const [ref, why] = el.dataset.key.split('|');
+    const [entryId, itemId] = ref.split(':');
+    update((data) => {
+      const entry = data.log.find((e) => e.id === entryId);
+      const target = itemId ? entry?.items?.find((i) => i.id === itemId) : entry;
+      if (!target) return;
+      if (target.why === why) delete target.why; else target.why = why;
+    });
+  },
+  'item-tag-meal'(el) {
+    const [entryId, itemId] = el.dataset.key.split(':');
+    update((data) => {
+      const item = data.log.find((e) => e.id === entryId)?.items?.find((i) => i.id === itemId);
+      if (!item) return;
+      if (el.checked) item.meal = true; else delete item.meal;
+    });
+  },
+  'item-qty'(el) {
+    const [entryId, itemId] = el.dataset.key.split(':');
+    const qty = parseQty(el.value);
+    update((data) => {
+      const item = data.log.find((e) => e.id === entryId)?.items?.find((i) => i.id === itemId);
+      if (!item) return;
+      if (qty) item.qty = qty; else delete item.qty;
     });
   },
   'item-tag'(el) {

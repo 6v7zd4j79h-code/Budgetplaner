@@ -66,27 +66,42 @@ test('Ausgeblendete Artikel zaehlen nicht als regelmaessig', () => {
   assert.deepEqual(r.hiddenItems, [{ key: 'butter', name: 'Butter' }]);
 });
 
-test('Liste fuer den Essensplan: Zeitraum, nur Lebensmittel, ohne Geschenke und Pfand', () => {
+test('Liste fuer den Essensplan: nur mit 🍽 markierte Artikel, mit Anzahl, ohne Geschenke und Pfand', () => {
+  const m = (name, amount, extra = {}) => ({ ...item(name, amount), meal: true, ...extra });
   const data = {
     months: { '2026-10': { lines: { expenses: [{ id: 'food', name: 'Lebensmittel' }, { id: 'cloth', name: 'Kleidung' }] } } },
     log: [
       { id: 'a', date: '2026-10-06', lineId: 'food', amount: 1000, items: [
-        item('Spaghetti', 99), item('Spaghetti', 99), item('Pfand', 25),
-        { ...item('Schlafanzug', 799), lineId: 'cloth' }, { ...item('Pralinen', 399), gift: true }] },
-      { id: 'b', date: '2026-10-10', amount: 500, items: [item('Tomaten', 199), item('Hackfleisch', 349)] },
-      { id: 'c', date: '2026-10-11', lineId: 'food', gift: true, amount: 900, items: [item('Torte', 900)] },
+        m('Spaghetti', 99), m('Spaghetti', 99), m('Pfand', 25), item('Brötchen', 45),
+        { ...item('Schlafanzug', 799), lineId: 'cloth' }, m('Pralinen', 399, { gift: true })] },
+      { id: 'b', date: '2026-10-10', amount: 500, items: [m('Tomaten', 199), m('Hackfleisch', 349), m('Schmand', 238, { qty: 2 })] },
+      { id: 'c', date: '2026-10-11', lineId: 'food', gift: true, amount: 900, items: [m('Torte', 900)] },
       // Zu alt fuer sieben Tage.
-      { id: 'd', date: '2026-10-01', lineId: 'food', amount: 300, items: [item('Butter', 229)] },
+      { id: 'd', date: '2026-10-01', lineId: 'food', amount: 300, items: [m('Butter', 229)] },
     ],
   };
   const r = mealPlanItems(data, { today: '2026-10-11', days: 7 });
   assert.equal(r.from, '2026-10-05');
   assert.equal(r.receipts, 2);
-  assert.deepEqual(r.items, [{ name: 'Hackfleisch', count: 1 }, { name: 'Spaghetti', count: 2 }, { name: 'Tomaten', count: 1 }]);
-  assert.equal(mealPlanText(r), 'Eingekauft 05.10.–11.10.:\n- Hackfleisch\n- Spaghetti (2×)\n- Tomaten');
+  assert.deepEqual(r.items, [{ name: 'Hackfleisch', count: 1 }, { name: 'Schmand', count: 2 }, { name: 'Spaghetti', count: 2 }, { name: 'Tomaten', count: 1 }]);
+  assert.equal(mealPlanText(r), 'Eingekauft 05.10.–11.10.:\n- Hackfleisch\n- Schmand (2×)\n- Spaghetti (2×)\n- Tomaten');
 
-  const all = mealPlanItems(data, { today: '2026-10-11', days: 7, foodOnly: false });
+  // Ohne den Filter: alles (auch Broetchen und Schlafanzug), Geschenke nicht.
+  const all = mealPlanItems(data, { today: '2026-10-11', days: 7, mealOnly: false });
+  assert.ok(all.items.some((i) => i.name === 'Brötchen'));
   assert.ok(all.items.some((i) => i.name === 'Schlafanzug'));
+  assert.ok(!all.items.some((i) => i.name === 'Pralinen'));
+});
+
+test('Anzahl auf dem Bon zaehlt fuer Vorrat und Stueckpreis', () => {
+  const log = [
+    { id: 'q1', date: '2026-10-02', note: 'EDEKA', amount: 196, items: [{ ...item('Joghurt', 196), qty: 4 }] },
+    { id: 'q2', date: '2026-10-09', note: 'EDEKA', amount: 49, items: [item('Joghurt', 49)] },
+  ];
+  assert.deepEqual(stockItems(log, { today: '2026-10-11' }).map((s) => [s.name, s.pieces]), [['Joghurt', 4]]);
+  const reg = regularItems(log, { today: '2026-10-11' }).items[0];
+  assert.equal(reg.pieces, 5);
+  assert.equal(reg.lastPrice, 49);
 });
 
 const STOCK_LOG = [
@@ -112,6 +127,7 @@ test('Vorrat: markiert oder mindestens 3 Stueck, nur die letzten Wochen, ohne Pf
 });
 
 test('Essensplan-Liste nennt aelteren Vorrat extra', () => {
-  const r = mealPlanItems({ months: {}, log: STOCK_LOG }, { today: '2026-10-11', days: 7 });
+  const log = STOCK_LOG.map((e) => ({ ...e, items: e.items.map((i) => ({ ...i, meal: true })) }));
+  const r = mealPlanItems({ months: {}, log }, { today: '2026-10-11', days: 7 });
   assert.equal(mealPlanText(r), 'Eingekauft 05.10.–11.10.:\n- Butter\n\nAuf Vorrat (vermutlich noch da):\n- Bio Nudeln 500g (02.10.)\n- Weiße Bohnen (3×, 02.10.)');
 });

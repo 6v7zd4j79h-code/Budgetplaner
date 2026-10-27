@@ -35,6 +35,21 @@ export function forSelect(action, key, value, people) {
     ${value && !known ? `<option value="${esc(value)}" selected>für ${esc(value)}</option>` : ''}</select>`;
 }
 
+// Anzahl eines Artikels ("2 x 1,19" auf dem Bon); leer = 1 Stueck.
+export function qtyInput({ action, key, value, label }) {
+  return `<label class="qty-field" title="Anzahl"><input class="qty" type="text" inputmode="numeric" autocomplete="off" maxlength="2"
+    data-action="${action}" data-key="${esc(key)}" aria-label="${esc(label)}" placeholder="1" value="${value > 1 ? value : ''}"><span aria-hidden="true">×</span></label>`;
+}
+
+// Anzahl aus dem Feld: 2-99, sonst 1 Stueck (null).
+export function parseQty(value) {
+  const n = Number(String(value || '').trim());
+  return Number.isInteger(n) && n >= 2 && n <= 99 ? n : null;
+}
+
+// Haekchen "🍽 Essensplan": nur angehakte Artikel gehen an den Essensplan.
+const mealTag = (action, key, item) => `<label class="meal-check"><input type="checkbox" data-action="${action}-meal" data-key="${esc(key)}" ${item.meal ? 'checked' : ''}><span>🍽 Essensplan</span></label>`;
+
 // Haken fuer einen Artikel: im Angebot / auf Vorrat / Geschenk, dazu fuer
 // wen, spezielle Ernaehrung und eine eigene Kategorie (z. B. Kleidung im
 // Lebensmitteleinkauf).
@@ -48,11 +63,13 @@ export function itemTags(action, key, item, people, lines = [], open = false) {
       item.forWhom && `für ${esc(item.forWhom)}`, diet && `🥗 ${esc(diet.name)}`, lineName && `📂 ${esc(lineName)}`,
     ].filter(Boolean);
     return `<span class="item-tags">
+      ${mealTag(action, key, item)}
       ${set.map((t) => `<span class="pill small">${t}</span>`).join('')}
       <button type="button" class="tag more" data-action="${action}-more" data-key="${esc(key)}" aria-expanded="false">＋ ${set.length ? 'ändern' : 'mehr'}</button>
     </span>`;
   }
   return `<span class="item-tags">
+    ${mealTag(action, key, item)}
     <button type="button" class="tag${item.deal ? ' on' : ''}" data-action="${action}" data-key="${esc(key)}:deal" aria-pressed="${!!item.deal}">🏷 Angebot</button>
     <button type="button" class="tag${item.stock ? ' on' : ''}" data-action="${action}" data-key="${esc(key)}:stock" aria-pressed="${!!item.stock}">📦 Vorrat</button>
     <button type="button" class="tag${item.gift ? ' on' : ''}" data-action="${action}" data-key="${esc(key)}:gift" aria-pressed="${!!item.gift}">🎁 Geschenk</button>

@@ -295,3 +295,48 @@ test('Rabatt direkt unter dem Artikel wird weiter abgezogen', () => {
   const r = parseReceipt('REWE\nTOMATEN 2,49 B\nRabatt Tomaten -0,50\nSUMME 1,99');
   assert.deepEqual(r.items.map((i) => [i.name, i.amount]), [['Tomaten', 199]]);
 });
+
+test('Anzahl: Mengenzeile unter dem Artikel (EDEKA, REWE), darueber (Kaufland), im Namen (Lidl), Gewicht zaehlt nicht', () => {
+  const r = parseReceipt(`EDEKA
+SCHMAND 24% 2,38 B
+  2 x 1,19
+JOGHURT NATUR 1,96 B
+  4 Stk x 0,49
+3 x 0,89
+SAHNE 2,67 B
+ZWIEBELN 0,99 x 2 1,98 B
+BANANEN 1,10 B
+  0,856 kg x 1,29 EUR/kg
+GURKE
+  2 x 0,69 1,38 B
+BROETCHEN 0,45 B
+SUMME 11,92`);
+  assert.deepEqual(r.items.map((i) => [i.name, i.amount, i.qty || 1]), [
+    ['Schmand 24%', 238, 2],
+    ['Joghurt Natur', 196, 4],
+    ['Sahne', 267, 3],
+    ['Zwiebeln', 198, 2],
+    ['Bananen', 110, 1],
+    ['Gurke', 138, 2],
+    ['Broetchen', 45, 1],
+  ]);
+  assert.equal(r.sum, r.total);
+});
+
+test('Anzahl: passt der Betrag nicht, wird nichts geraten', () => {
+  const r = parseReceipt(`EDEKA
+BIO VOLLMILCH 1,19 B
+2 x 1,19
+BIO VOLLMILCH 1,19 B
+SUMME 2,38`);
+  assert.deepEqual(r.items.map((i) => i.qty || 1), [1, 1]);
+});
+
+test('Anzahl: "2 x Broetchen" vorne und Rechnungstabelle', () => {
+  const r = parseReceipt(`Bäckerei
+2 x Brötchen 0,90
+1 Kinderschreibtisch 1 1.149,00 € 1.149,00 €
+2 Schreibtischlampe 2 24,95 € 49,90 €
+Summe 1.199,80 €`);
+  assert.deepEqual(r.items.map((i) => [i.name, i.qty || 1]), [['Brötchen', 2], ['Kinderschreibtisch', 1], ['Schreibtischlampe', 2]]);
+});

@@ -7,11 +7,11 @@ import { update } from '../store.js';
 import { esc } from './dom.js';
 
 // Auswahl fuer die Essensplan-Liste; gilt nur, solange die App offen ist.
-export const meal = { days: 7, foodOnly: true, copied: false };
+export const meal = { days: 7, mealOnly: true, copied: false };
 
 const state = { busy: false, error: null, sent: null, setup: false, setupError: null };
 
-export const mealList = (data) => mealPlanItems(data, { days: meal.days, foodOnly: meal.foodOnly });
+export const mealList = (data) => mealPlanItems(data, { days: meal.days, mealOnly: meal.mealOnly });
 
 const time = (iso) => new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 

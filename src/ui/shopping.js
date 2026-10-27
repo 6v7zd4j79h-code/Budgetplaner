@@ -39,13 +39,13 @@ function mealCard(data) {
   const r = mealList(data);
   return `<article class="card">
     <h2>🍽 Für den Essensplan</h2>
-    <p class="muted">Was in den letzten Tagen eingekauft wurde – ohne Preise und Läden, für den Essensplan im Sternenplan.</p>
+    <p class="muted">Was in den letzten Tagen fürs Essen eingekauft wurde (Artikel mit 🍽) – mit Anzahl, ohne Preise und Läden, für den Essensplan im Sternenplan.</p>
     ${linkPanel(data)}
     <div class="btn-row">
       <label>Zeitraum <select data-action="meal-days">
         ${[3, 7, 14].map((d) => `<option value="${d}"${d === meal.days ? ' selected' : ''}>letzte ${d} Tage</option>`).join('')}
       </select></label>
-      <label><input type="checkbox" data-action="meal-food"${meal.foodOnly ? ' checked' : ''}> nur Lebensmittel</label>
+      <label><input type="checkbox" data-action="meal-food"${meal.mealOnly ? ' checked' : ''}> nur mit 🍽 markierte Artikel</label>
     </div>
     ${r.items.length || r.stock.length
       ? `<pre class="meal-list">${esc(mealPlanText(r))}</pre>
@@ -55,7 +55,9 @@ function mealCard(data) {
           ${typeof navigator !== 'undefined' && navigator.share ? '<button type="button" class="btn ghost" data-action="meal-share">↗ Teilen</button>' : ''}
         </div>
         ${mealStatus(data)}`
-      : '<p class="hint">In diesem Zeitraum keine Einkäufe mit Artikeln. Scanne einen Kassenbon, dann erscheint hier die Liste.</p>'}
+      : `<p class="hint">${meal.mealOnly
+        ? 'In diesem Zeitraum ist nichts mit 🍽 markiert. Setz beim Bon-Prüfen oder unter Ausgaben den Punkt „🍽 Essensplan“ bei allem, was fürs Essen gedacht ist – nur das kommt auf diese Liste.'
+        : 'In diesem Zeitraum keine Einkäufe mit Artikeln. Scanne einen Kassenbon, dann erscheint hier die Liste.'}</p>`}
   </article>`;
 }
 
@@ -151,7 +153,7 @@ export const actions = {
     ctx.rerender();
   },
   'meal-food'(el, _event, ctx) {
-    meal.foodOnly = el.checked;
+    meal.mealOnly = el.checked;
     meal.copied = false;
     ctx.rerender();
   },

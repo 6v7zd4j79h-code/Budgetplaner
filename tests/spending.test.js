@@ -79,3 +79,53 @@ test('Spezielle Ernaehrung: Vorschlag aus dem Namen und Monatsuebersicht', async
   assert.equal(d.total, 747);
   assert.deepEqual(d.rows.map((r) => [r.name, r.amount]), [['Protein / Sport', 398], ['Glutenfrei', 349]]);
 });
+
+test('Gruende fuer Unnoetiges: Summen pro Grund, offene zaehlen', async () => {
+  const { monthWaste } = await import('../src/waste.js');
+  const log = [
+    { id: 'a', date: '2026-10-05', lineId: 'food', note: 'EDEKA', amount: 900, items: [
+      { id: '1', name: 'Schokolade', amount: 199, waste: true, why: 'need' },
+      { id: '2', name: 'Special Joghurt', amount: 129, waste: true, why: 'try' },
+      { id: '3', name: 'Chips', amount: 179, waste: true },
+      { id: '4', name: 'Milch', amount: 119 }] },
+    { id: 'b', date: '2026-10-07', lineId: 'out', note: 'Lieferando', amount: 2500, waste: true, why: 'need' },
+  ];
+  const w = monthWaste(log, '2026-10');
+  assert.deepEqual(w.byWhy.map((r) => [r.id, r.count, r.amount]), [['need', 2, 2699], ['try', 1, 129]]);
+  assert.equal(w.open, 1);
+  assert.equal(w.items.find((i) => i.name === 'Chips').ref, 'a:3');
+  assert.equal(w.items.find((i) => i.whole).ref, 'b');
+});
+
+test('Erinnerung am Monatsende: nur mit offenen Gruenden, wegklickbar', async () => {
+  const { wasteReminder } = await import('../src/waste.js');
+  const log = [{ id: 'a', date: '2026-10-05', amount: 199, items: [{ id: '1', name: 'Chips', amount: 199, waste: true }] }];
+  assert.equal(wasteReminder(log, { today: '2026-10-15' }), null); // Monatsmitte
+  assert.deepEqual(wasteReminder(log, { today: '2026-10-29' }), { month: '2026-10', open: 1 });
+  assert.deepEqual(wasteReminder(log, { today: '2026-11-03' }), { month: '2026-10', open: 1 });
+  assert.equal(wasteReminder(log, { today: '2026-11-03', off: { '2026-10': true } }), null);
+  assert.equal(wasteReminder(log, { today: '2026-11-09' }), null);
+  log[0].items[0].why = 'impulse';
+  assert.equal(wasteReminder(log, { today: '2026-10-30' }), null);
+});
+
+test('Wofuer eingekauft: jeder Artikel einmal, Rest ist Verbrauch nach Kategorie', async () => {
+  const { monthUse } = await import('../src/spending.js');
+  const log = [
+    { id: 'a', date: '2026-10-05', lineId: 'food', amount: 2000, items: [
+      { id: '1', name: 'Schmand', amount: 238, qty: 2, meal: true },
+      { id: '2', name: 'Joghurt', amount: 294, qty: 6 },
+      { id: '3', name: 'Zahnpasta', amount: 195, lineId: 'drug' },
+      { id: '4', name: 'Schokolade', amount: 199, waste: true, meal: true },
+      { id: '5', name: 'Pralinen', amount: 399, gift: true, waste: true },
+      { id: '6', name: 'Nudeln', amount: 396, stock: true, deal: true },
+      { id: '7', name: 'Pfand', amount: -25 }] },
+    { id: 'b', date: '2026-10-06', lineId: 'tank', amount: 5000 }, // ohne Artikel: zaehlt nicht
+  ];
+  const u = monthUse(log, '2026-10', { food: 'Lebensmittel', drug: 'Drogerie' });
+  assert.equal(u.total, 238 + 294 + 195 + 199 + 399 + 396);
+  assert.equal(u.deal, 396);
+  assert.deepEqual(u.rows.map((r) => [r.id, r.amount]), [['use', 489], ['meal', 238], ['stock', 396], ['gift', 399], ['waste', 199]]);
+  assert.deepEqual(u.use.byLine, [{ name: 'Lebensmittel', amount: 294 }, { name: 'Drogerie', amount: 195 }]);
+  assert.deepEqual(u.use.items.map((i) => [i.name, i.pieces]), [['Joghurt', 6], ['Zahnpasta', 1]]);
+});

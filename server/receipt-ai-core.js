@@ -27,10 +27,11 @@ const SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['name', 'amount_cents', 'article_no'],
+        required: ['name', 'amount_cents', 'quantity', 'article_no'],
         properties: {
           name: { type: 'string' },
           amount_cents: { type: 'integer' },
+          quantity: { type: 'integer', description: 'Anzahl Stück; 1, wenn keine Anzahl dasteht oder nach Gewicht' },
           article_no: { type: 'string' },
         },
       },
@@ -43,7 +44,8 @@ const PROMPT = `Lies diesen deutschen Kassenbon. Die Fotos zeigen ihn von oben n
 Regeln:
 - Jeden gekauften Artikel genau einmal, in der Reihenfolge des Bons. Zeilen, die auf zwei Fotos zu sehen sind, nur einmal.
 - Stornierte Artikel (Storno, Sofortstorno) weglassen – den stornierten Artikel und die Stornozeile.
-- Mengen- und Gewichtszeilen ("2 x 1,19", "0,512 kg x 1,99 EUR/kg") gehören zum Artikel darüber: nimm den Zeilenbetrag des Artikels.
+- Mengen- und Gewichtszeilen ("2 x 1,19", "0,512 kg x 1,99 EUR/kg") gehören zum Artikel darüber (bei manchen Läden darunter): nimm den Zeilenbetrag des Artikels.
+- quantity: die Anzahl aus "2 x 1,19", "2 Stk x 1,19" oder "1,19 x 2", sonst 1. Gewicht ("0,512 kg") ist Anzahl 1. Steht derselbe Artikel mehrmals einzeln auf dem Bon, jede Zeile einzeln mit 1.
 - Rabatte und Coupons direkt vom betreffenden Artikel abziehen. Pfand als eigener Artikel "Pfand", Leergut-Rückgabe als negativer Betrag.
 - Keine Zahlungs-, Steuer-, Payback- oder Kundeninformationen.
 - name: Artikelname so wie auf dem Bon, ohne Artikelnummer. article_no: die Artikelnummer vor dem Namen, sonst "".
@@ -123,7 +125,8 @@ export function normalize(data) {
       if (prev && !/leergut|pfand/i.test(name)) { prev.amount = Math.max(0, prev.amount + amount); continue; }
     }
     if (!name) continue;
-    items.push({ name, amount, ...(it.article_no ? { artNo: String(it.article_no).slice(0, 12) } : {}) });
+    const qty = Number.isInteger(it?.quantity) && it.quantity >= 2 && it.quantity <= 99 ? it.quantity : null;
+    items.push({ name, amount, ...(qty ? { qty } : {}), ...(it.article_no ? { artNo: String(it.article_no).slice(0, 12) } : {}) });
   }
   return {
     shop: String(data?.shop || '').trim().slice(0, 40),
