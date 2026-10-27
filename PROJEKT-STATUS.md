@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-07, abgeschlossen am 23.10. (Mac: Kredite aus PDFs in die Mareike-Importdatei, Abgleich über Netlify Blobs, gemeinsame Budgets – Inhalt siehe 07.10.; beim Abschluss kein Code geändert). Davor 2026-10-13, zweite Sitzung, abgeschlossen am 23.10. (Mac: nur Beratung, wie Klas ans Gemeinschaftskonto kommt; kein Code geändert). Davor 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy), 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-10-27 (Mac: Anzahl auf dem Bon, Häkchen 🍽 Essensplan, „Wofür eingekauft“, Gründe für Unnötiges mit Erinnerung; deployt). Davor 2026-10-07, abgeschlossen am 23.10. (Mac: Kredite aus PDFs in die Mareike-Importdatei, Abgleich über Netlify Blobs, gemeinsame Budgets – Inhalt siehe 07.10.; beim Abschluss kein Code geändert). Davor 2026-10-13, zweite Sitzung, abgeschlossen am 23.10. (Mac: nur Beratung, wie Klas ans Gemeinschaftskonto kommt; kein Code geändert). Davor 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy), 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -263,6 +263,38 @@ Am 13.10., zweite Sitzung am Mac (nur Beratung, kein Code geändert):
 - `.claude/commands/start.md` und `shutdown.md`: Schritt für den
   Session-Status (🟡/✅) ergänzt (von Mareike).
 
+Am 27.10. am Mac (auf `main`, **deployt**, live geprüft):
+- **Anzahl auf dem Bon** (`item.qty`, fehlt = 1 Stück; `item.amount` bleibt der
+  Zeilenbetrag). Erkannt: Mengenzeile „2 x 1,19“ / „2 Stk x 1,19“ unter dem
+  Artikel (EDEKA, REWE, Netto) oder darüber (Kaufland), „0,99 x 2“ bzw.
+  „1,69 € x 4“ im Namen (Lidl), „2 x Brötchen“ vorne, Menge in
+  Rechnungstabellen, Name ohne Preis + Mengenzeile mit Betrag. Gewicht
+  („0,856 kg x …“) = 1. Zugeordnet nur, wenn Anzahl × Stückpreis genau den
+  Zeilenbetrag ergibt – sonst wird nicht geraten. ALDI (jedes Stück eine
+  Zeile) unverändert. Claude-Lesen liefert `quantity` mit. Feld „2 ×“ neben
+  dem Preis (Bon prüfen und Ausgaben). Anzahl zählt in Essensplan-Liste,
+  Vorrat (≥ 3 Stück) und Regelmäßigen Einkäufen (dort jetzt Stückpreis).
+- **Häkchen „🍽 Essensplan“** (`item.meal`), direkt sichtbar unter jedem
+  Artikel, **nie automatisch gesetzt** (Mareike: Brötchen, Kinderjoghurt
+  usw. sind Lebensmittel, aber nicht für den Essensplan). Nur angehakte
+  Artikel gehen an den Essensplan (mit Anzahl); Schalter „nur mit 🍽
+  markierte Artikel“ ersetzt „nur Lebensmittel“. Sternenplan-Schnittstelle
+  unverändert (`count` ist jetzt die echte Anzahl).
+- **„🧺 Wofür eingekauft“** (`monthUse` in `src/spending.js`, Karte unter
+  Ausgaben): Bon-Artikel des Monats je genau einmal in Geschenk → Unnötig →
+  Essen → Vorrat → Verbrauch (Rest, kein eigener Haken), Verbrauch nach
+  Kategorie, Zeile „davon im Angebot“. Angebot ist kein Zweck, nur Preis;
+  alle Haken bleiben kombinierbar. Buchungen ohne Artikel zählen hier nicht.
+- **Gründe für Unnötiges** (`why` an Artikel/Buchung, `WASTE_REASONS` in
+  `src/waste.js`: Bedürfnis, Ausprobieren, Angebot, Spontan, Belohnung,
+  Sonstiges). Beim Anhaken keine Frage; Durchgang „💭 Gründe eintragen“ in
+  der Karte „Unnötig ausgegeben“, danach „Warum?“ mit Anzahl und Summe.
+  **Erinnerung** in der Übersicht in den letzten 3 Tagen des Monats und der
+  ersten Woche danach, nur wenn Gründe fehlen; „Nicht für diesen Monat“
+  (`data.wasteReminderOff`). Kein Push auf das Handy, nur beim Öffnen.
+- 121 Tests grün, im Browser (Handy) mit erfundenen Daten und erfundenem
+  PDF-Bon geprüft. Mit echtem Bon und echtem Claude-Lesen noch nicht getestet.
+
 Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
@@ -283,6 +315,9 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
    Netlify weiter deployt. Das Bereinigen der Historie per Force-Push hat der
    Sicherheitsfilter von Claude Code blockiert.
    Mögliche Ergänzung: Konto-Passwort ändern, solange man angemeldet ist.
+0. **Neu (27.10.) mit echten Bons ausprobieren:** Anzahl bei EDEKA/REWE/Lidl
+   (steht „2 ×“ richtig da?), 🍽-Häkchen und Schicken an den Essensplan,
+   Gründe eintragen. Ältere Bons haben noch keine 🍽-Häkchen.
 0. Vorrat-Warnung mit echten Bons ausprobieren; Angebote der Woche
    erstmals echt (PLZ eintragen). Schicken an den Essensplan läuft (13.10.).
 1. Am Mac auf budget-kompass.netlify.app **Konto erstellen**, Importdateien
@@ -311,25 +346,6 @@ Abgleich über Netlify Blobs statt Neon/Supabase (07.10.).
   aus einen Hinweis bekommen („Das kaufst du jede Woche / auf Vorrat – ist im
   Angebot“), ohne die App zu öffnen. Heute prüft die App nur beim Öffnen,
   einmal pro Woche, und erst nach Eintragen der PLZ. Eigenes Thema.
-- **Verbrauch und Gründe für Unnötiges (Wunsch 27.10.):** In der
-  Monatsübersicht soll sichtbar sein, was „normaler Verbrauch“ ist: alles, was
-  nicht unnötig, Geschenk, Essensplan oder Vorrat ist, z. B. Joghurt
-  zwischendurch für die Kinder, Zahnpasta, Klopapier, aufgeteilt nach
-  Lebensmittel/Drogerie. Dazu bei „unnötig“ ein optionaler **Grund**:
-  Bedürfnis (z. B. Schokolade während der Periode), Ausprobieren (neuer
-  Joghurt), Angebot, Impuls … Eigene Übersicht: was diesen Monat unnötig war,
-  welche Produkte, wie oft welcher Grund. Claudes Vorschlag: Verbrauch
-  automatisch als Rest berechnen (kein eigenes Anhaken) und die vorhandene
-  Karte „Unnötig ausgegeben“ um die Gründe erweitern.
-  **Wichtig (Mareike):** Beim Anhaken von „unnötig“ fragt die App NICHTS
-  zusätzlich, das bleibt ein einfacher Haken. Die Gründe vergibt sie später,
-  wenn sie möchte, in einem eigenen Durchgang (z. B. sonntags): Liste der
-  unnötigen Artikel ohne Grund durchgehen und je einen Grund wählen.
-  Freiwillig, nie Pflicht. Den Durchgang macht sie von sich aus; zusätzlich
-  **am Monatsende ein kurzer Hinweis in der App** (beim Öffnen), z. B.: „Du
-  hast bei X unnötigen Käufen noch keinen Grund eingetragen. Willst du das
-  noch machen, bevor du es vergisst?“ – nur wenn es Artikel ohne Grund gibt,
-  wegklickbar.
 
 - **Für das Projekt Sternenplan (dort umsetzen, nicht hier):** Essensplan mit
   Feld zum Einfügen der Liste aus „🍽 Für den Essensplan“ (Budgetplaner →
