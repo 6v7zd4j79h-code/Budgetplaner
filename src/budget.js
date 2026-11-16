@@ -57,12 +57,39 @@ export function templateMonth() {
       income: [line('Gehalt', 0)],
       bills: ['Miete', 'Strom', 'Internet', 'Handyvertrag', 'Versicherungen', 'GEZ-Beitrag']
         .map((n) => line(n, 0)),
-      expenses: ['Lebensmittel', 'Drogerie', 'Tanken / Fahrkarten', 'Freizeit', 'Kleidung']
+      expenses: ['Lebensmittel', 'Drogerie', 'Haushalt', 'Baumarkt', 'Jahreszeit / Basteln', 'Schule',
+        'Tanken / Fahrkarten', 'Freizeit', 'Kleidung']
         .map((n) => line(n, 0)),
       savings: [line('Notgroschen', 0)],
       debts: [],
     },
   };
+}
+
+// Kategorien, die nachtraeglich dazugekommen sind (Wunsch 16.11.2026).
+// Bestehende Budgets bekommen sie einmal ab dem aktuellen Monat; wer eine
+// davon loescht, bekommt sie nicht wieder (Merker in data.upgrades).
+export const NEW_CATEGORIES = ['Haushalt', 'Baumarkt', 'Jahreszeit / Basteln', 'Schule'];
+export const CATEGORY_UPGRADE = 'kategorien-2026-11';
+
+export function needsCategoryUpgrade(data) {
+  return !(data.upgrades || []).includes(CATEGORY_UPGRADE);
+}
+
+export function addNewCategories(data, key) {
+  if (!needsCategoryUpgrade(data)) return false;
+  for (const k of Object.keys(data.months).filter((m) => m >= key)) {
+    const lines = data.months[k].lines.expenses;
+    const names = lines.map((l) => String(l.name || '').trim().toLowerCase());
+    for (const name of NEW_CATEGORIES) {
+      const wanted = name.toLowerCase();
+      // "Haushalt / Wohnen" o. Ae. zaehlt schon als Haushalt.
+      const has = names.some((n) => n === wanted || (wanted === 'haushalt' && n.startsWith('haushalt')));
+      if (!has) lines.push(line(name, 0));
+    }
+  }
+  data.upgrades = [...(data.upgrades || []), CATEGORY_UPGRADE];
+  return true;
 }
 
 // Neuer Monat aus dem Vormonat: gleiche Zeilen, gleiche IDs (damit Buchungen
@@ -228,7 +255,7 @@ export function ensureMonth(data, key) {
 }
 
 export function emptyData() {
-  return { version: 1, months: {}, log: [], subscriptions: [], goals: [] };
+  return { version: 1, months: {}, log: [], subscriptions: [], goals: [], upgrades: [CATEGORY_UPGRADE] };
 }
 
 // Prueft eine importierte Sicherung, bevor sie die vorhandenen Daten ersetzt.

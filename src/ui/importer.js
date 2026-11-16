@@ -22,8 +22,8 @@ const SECTION_OPTIONS = [
   ['ignore', 'Ignorieren'],
 ];
 
-const DEFAULT_CATEGORIES = ['Lebensmittel', 'Drogerie', 'Tanken / Fahrkarten', 'Freizeit', 'Kleidung',
-  'Haushalt / Wohnen', 'Online-Shopping', 'Sonstiges'];
+const DEFAULT_CATEGORIES = ['Lebensmittel', 'Drogerie', 'Haushalt', 'Baumarkt', 'Jahreszeit / Basteln', 'Schule',
+  'Tanken / Fahrkarten', 'Freizeit', 'Kleidung', 'Online-Shopping', 'Sonstiges'];
 
 let session = null;
 

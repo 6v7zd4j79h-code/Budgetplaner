@@ -1,5 +1,5 @@
 import './styles.css';
-import { ensureMonth, monthSummary } from './budget.js';
+import { addNewCategories, ensureMonth, monthSummary, needsCategoryUpgrade } from './budget.js';
 import { addMonths, monthKey, monthLabel } from './dates.js';
 import { activeBudget, dismissNotice, isProtected, load, lock, store, subscribe, switchBudget, update } from './store.js';
 import * as lockView from './ui/lock.js';
@@ -158,6 +158,11 @@ function render() {
   if (!store.data.months[ui.key]) {
     // Fehlender Monat wird angelegt; update() ruft render() erneut auf.
     update((data) => ensureMonth(data, ui.key));
+    return;
+  }
+  if (needsCategoryUpgrade(store.data)) {
+    // Einmalig neue Kategorien nachruesten; update() zeichnet neu.
+    update((data) => addNewCategories(data, ui.key));
     return;
   }
   navEl.hidden = false;

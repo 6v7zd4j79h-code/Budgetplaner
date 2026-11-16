@@ -269,3 +269,17 @@ test('Artikel mit eigener Kategorie zaehlen im Budget dort (Schlafanzug im Leben
   ] }];
   assert.deepEqual(expenseActuals(month, log, '2026-10'), { byLine: { leb: 3701, kl: 1299 }, uncategorized: 0 });
 });
+
+test('neue Kategorien werden einmal ab dem aktuellen Monat nachgeruestet', async () => {
+  const { addNewCategories, needsCategoryUpgrade, emptyData } = await import('../src/budget.js');
+  const mk = (names) => ({ startBalance: null, lines: { income: [], bills: [], expenses: names.map((name, i) => ({ id: `l${i}`, name, budget: 0, actual: null, done: false })), savings: [], debts: [] } });
+  const data = { version: 1, months: { '2026-10': mk(['Lebensmittel']), '2026-11': mk(['Lebensmittel', 'Haushalt / Wohnen']) }, log: [], subscriptions: [], goals: [] };
+  assert.ok(needsCategoryUpgrade(data));
+  assert.ok(addNewCategories(data, '2026-11'));
+  assert.deepEqual(data.months['2026-11'].lines.expenses.map((l) => l.name),
+    ['Lebensmittel', 'Haushalt / Wohnen', 'Baumarkt', 'Jahreszeit / Basteln', 'Schule']);
+  assert.deepEqual(data.months['2026-10'].lines.expenses.map((l) => l.name), ['Lebensmittel'], 'Vergangenheit bleibt');
+  data.months['2026-11'].lines.expenses.pop();
+  assert.equal(addNewCategories(data, '2026-11'), false, 'geloeschte kommen nicht wieder');
+  assert.equal(needsCategoryUpgrade(emptyData()), false);
+});

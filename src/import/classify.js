@@ -21,12 +21,15 @@ const RULES = [
   { section: 'subscription', category: 'Geschäft', test: /netlify|github|wix|squarespace|shopify|zapier|mailchimp|brevo|calendly|zoom\b|later\.com|linktree|elopage|digistore|copecart|ablefy/i },
   { section: 'savings', name: 'Sparen', test: /sparplan|tagesgeld|depot|trade republic|scalable|comdirect|sparkonto|bausparen|wertpapier|etf/i },
   { section: 'debts', name: 'Raten / Kredite', test: /klarna|ratenkauf|kredit|darlehen|tilgung|ratenzahlung|paypal ratenzahlung|santander|targobank|easycredit|barclays|advanzia/i },
+  { section: 'expenses', name: 'Baumarkt', test: /bauhaus|\bobi\b|hornbach|toom|hagebau|globus baumarkt|bauking|raiffeisen ?markt|baumarkt|hellweg|sonderpreis baumarkt/i },
   { section: 'expenses', name: 'Lebensmittel', test: /rewe|edeka|aldi|lidl|netto|penny|kaufland|globus|tegut|norma|real\b|hit\b|marktkauf|famila|denn'?s|alnatura|bäcker|baecker|metzger|wochenmarkt|hellofresh|flink|gorillas|knuspr|picnic/i },
   { section: 'expenses', name: 'Drogerie', test: /\bdm\b|dm-drogerie|rossmann|müller|mueller|budni|douglas|apotheke/i },
   { section: 'expenses', name: 'Tanken / Fahrkarten', test: /aral|shell|esso|total|jet\b|avia|agip|star tankstelle|tankstelle|deutsche bahn|db vertrieb|\bdb\b|flixbus|bvg|mvv|hvv|rnv|vrn|deutschlandticket|uber|bolt|free now|parken|parkhaus|easypark|apcoa/i },
   { section: 'expenses', name: 'Kleidung', test: /zalando|h&m|hm\.com|zara|c&a|primark|about you|tk maxx|deichmann|snipes|vinted|uniqlo|mango|esprit|s\.oliver|peek/i },
   { section: 'expenses', name: 'Freizeit', test: /kino|cinemaxx|cineplex|restaurant|cafe|café|bar\b|mcdonald|burger king|lieferando|wolt|starbucks|vapiano|eventim|ticket|thalia|hugendubel|steam|playstation|nintendo|fitness|mcfit|clever fit|urban sports/i },
-  { section: 'expenses', name: 'Haushalt / Wohnen', test: /ikea|bauhaus|obi\b|hornbach|toom|tedi|action\b|depot\b|kik\b|woolworth|jysk|poco|xxxlutz|höffner/i },
+  { section: 'expenses', name: 'Schule', test: /mcpaper|schreibwaren|schulbedarf|schulranzen|klassenfahrt|klassenkasse|schulgeld|schulbuch|mensa|förderverein|foerderverein|schulverein|elternbeitrag/i },
+  { section: 'expenses', name: 'Jahreszeit / Basteln', test: /idee\.? ?creativ|creativmarkt|boesner|bastel|vbs hobby|modulor|depot\b|søstrene|sostrene|flying tiger/i },
+  { section: 'expenses', name: 'Haushalt', test: /ikea|tedi|action\b|kik\b|woolworth|jysk|poco|xxxlutz|höffner|thomas philipps|mäc-?geiz|pfennigpfeiffer|centershop|tchibo|nanu-?nana/i },
   { section: 'expenses', name: 'Online-Shopping', test: /amazon|amzn|ebay|otto\b|temu|shein|aliexpress|etsy|koro|paypal/i },
 ];
 
