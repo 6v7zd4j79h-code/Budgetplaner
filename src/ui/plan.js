@@ -101,7 +101,8 @@ export function render({ data, raw, key, summary, account }) {
   return `
   <article class="card import-teaser">
     <div><h2>Kontoauszug einlesen</h2>
-      <p class="hint">CSV aus dem Online-Banking wählen – die App füllt das Budget vor. Bleibt auf dem Gerät.</p></div>
+      <p class="hint">CSV aus dem Online-Banking wählen – die App füllt das Budget vor. Bleibt auf dem Gerät.</p>
+      <p class="hint"><button type="button" class="link-btn" data-action="goto" data-view="fixed">📅 Feste Abbuchungen</button> – Haftpflicht, Versicherungen &amp; Co.: was diesen Monat noch abgeht</p></div>
     <button type="button" class="btn primary" data-action="goto" data-view="import">Einlesen</button>
   </article>
   ${startCard(raw.months[key], summary, account)}

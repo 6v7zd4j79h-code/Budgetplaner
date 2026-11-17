@@ -2,7 +2,7 @@
 // Ist, verfuegbarer Betrag, Verteilung und Ausgaben nach Kategorie.
 
 import { SECTIONS, distribution, expenseActuals, subscriptionSummary, goalProgress } from '../budget.js';
-import { formatDay, monthLabel, monthName } from '../dates.js';
+import { formatDay, monthKey, monthLabel, monthName } from '../dates.js';
 import { donut, legend, meter } from './charts.js';
 import { esc, eur, signClass } from './dom.js';
 import { monthWaste, wasteReminder } from '../waste.js';
@@ -10,6 +10,7 @@ import { openWasteReview } from './log.js';
 import { update } from '../store.js';
 import { activeAccounts, balancesSummary, loanProgress, loansOf, loansSummary, overdraftRoom } from '../accounts.js';
 import { soonCard } from './occasions.js';
+import { dueCard } from './fixed.js';
 import { mealActions, mealTeaser } from './mealsend.js';
 import { offersCard } from './offers.js';
 
@@ -117,6 +118,7 @@ export function render({ data, key, summary, account }) {
   ${reminderCard(data)}
   ${accountsCard(data, account)}
   ${loansCard(data, account)}
+  ${key === monthKey() ? dueCard(data) : ''}
   ${soonCard(data)}
   ${offersCard(data)}
   ${mealTeaser(data)}

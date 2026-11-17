@@ -981,3 +981,11 @@ input[type=month] { min-height: 40px; }
 .reminder-card { border: 1px solid var(--primary); background: var(--primary-soft); }
 .reminder-card h2 { margin-top: 0; }
 .use-card .cat-row { margin-bottom: 6px; }
+
+/* Feste Abbuchungen */
+.btn.small { padding: 4px 10px; font-size: 0.85rem; min-height: 0; }
+.fixed-buttons { display: flex; gap: 6px; flex-shrink: 0; align-self: center; }
+.fixed-manual { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+.fixed-manual .money { width: 7em; }
+.occasion-edit .fixed-manual select { width: auto; margin-top: 0; }
+.fixed-card .section-sum { white-space: nowrap; }

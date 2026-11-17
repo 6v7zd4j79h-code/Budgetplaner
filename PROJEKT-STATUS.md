@@ -342,6 +342,18 @@ Abgleich über Netlify Blobs statt Neon/Supabase (07.10.).
 
 ## Offene Punkte / Hinweise
 
+- **„Geht diesen Monat noch ab“ (Wunsch 17.11.):** Aus eingelesenen
+  Kontoauszügen regelmäßige Abbuchungen erkennen (gleicher Empfänger,
+  ähnlicher Betrag, Rhythmus monatlich/vierteljährlich/halbjährlich/jährlich,
+  ungefährer Tag), kurz bestätigen lassen, dann Karte in der Übersicht mit
+  dem, was bis Monatsende noch abgeht (Betrag + Datum, Summe). Nur **feste**
+  Beträge (Haftpflicht, Versicherungen, Abos …) – keine geschätzten
+  „ca.“-Posten wie Tanken (Mareike: „brauche ich nicht“). Abgebucht =
+  erscheint im nächsten Auszug → raus aus „offen“. Für jährliche Posten
+  einmal 12 Monate Auszüge nötig: gemeinsam über Chrome ziehen, Mareike
+  meldet sich selbst an (Passwort/TAN), Claude lädt die CSV nach Rückfrage,
+  Dateien nur nach `~/Budgetplan-Sicherungen`.
+
 - **Angebote als Benachrichtigung (Wunsch 27.10.):** Mareike möchte von sich
   aus einen Hinweis bekommen („Das kaufst du jede Woche / auf Vorrat – ist im
   Angebot“), ohne die App zu öffnen. Heute prüft die App nur beim Öffnen,

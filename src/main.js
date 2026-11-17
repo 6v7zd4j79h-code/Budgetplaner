@@ -16,6 +16,7 @@ import * as importer from './ui/importer.js';
 import * as receipt from './ui/receipt.js';
 import * as shopping from './ui/shopping.js';
 import * as occasions from './ui/occasions.js';
+import * as fixed from './ui/fixed.js';
 import * as offers from './ui/offers.js';
 import { backupOverdue } from './ui/settings.js';
 import { applyPalette } from './palette.js';
@@ -38,6 +39,7 @@ const VIEWS = {
   shopping: { module: shopping, title: 'Regelmäßige Einkäufe', icon: '🛒', monthly: false, hidden: true },
   offers: { module: offers, title: 'Angebote der Woche', icon: '🏷', monthly: false, hidden: true },
   occasions: { module: occasions, title: 'Anlässe', icon: '🎂', monthly: false, hidden: true },
+  fixed: { module: fixed, title: 'Feste Abbuchungen', icon: '📅', monthly: false, hidden: true },
   accounts: { module: accountsView, title: 'Konten', icon: '🏦', monthly: true, hidden: true },
 };
 

@@ -32,6 +32,11 @@ export function applyImport(data, key, groups) {
   for (const g of groups) {
     // Gewaehlte Zuordnung merken - beim naechsten Import ist sie Vorschlag.
     data.learned[g.normalized] = { section: g.section, name: g.name, category: g.category };
+    // Lesbarer Empfaengername fuer feste Abbuchungen (src/recurring.js).
+    if (g.label) {
+      data.payeeLabels = data.payeeLabels || {};
+      data.payeeLabels[g.normalized] = g.label;
+    }
     if (!g.include || g.section === 'ignore') continue;
 
     const fresh = g.transactions.filter((t) => !seen.has(fingerprint(t)));
