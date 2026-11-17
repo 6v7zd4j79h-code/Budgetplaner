@@ -5,7 +5,7 @@
 
 ## Aktueller Stand
 
-**Letzte Sitzung:** 2026-10-27 (Mac: Anzahl auf dem Bon, Häkchen 🍽 Essensplan, „Wofür eingekauft“, Gründe für Unnötiges mit Erinnerung; deployt). Davor 2026-10-07, abgeschlossen am 23.10. (Mac: Kredite aus PDFs in die Mareike-Importdatei, Abgleich über Netlify Blobs, gemeinsame Budgets – Inhalt siehe 07.10.; beim Abschluss kein Code geändert). Davor 2026-10-13, zweite Sitzung, abgeschlossen am 23.10. (Mac: nur Beratung, wie Klas ans Gemeinschaftskonto kommt; kein Code geändert). Davor 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy), 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
+**Letzte Sitzung:** 2026-11-17 (Mac: neue Kategorien Haushalt, Baumarkt, Jahreszeit / Basteln, Schule – auch in bestehenden Budgets per einmaligem Upgrade; „Feste Abbuchungen“ erkennen + Karte „Geht im … noch ab“ in der Übersicht; beides deployt. 12 Monate Auszüge über Chrome gezogen: Sparkasse beide Konten + PayPal privat, liegen in `~/Budgetplan-Sicherungen`). Davor 2026-10-27 (Mac: Anzahl auf dem Bon, Häkchen 🍽 Essensplan, „Wofür eingekauft“, Gründe für Unnötiges mit Erinnerung; deployt). Davor 2026-10-07, abgeschlossen am 23.10. (Mac: Kredite aus PDFs in die Mareike-Importdatei, Abgleich über Netlify Blobs, gemeinsame Budgets – Inhalt siehe 07.10.; beim Abschluss kein Code geändert). Davor 2026-10-13, zweite Sitzung, abgeschlossen am 23.10. (Mac: nur Beratung, wie Klas ans Gemeinschaftskonto kommt; kein Code geändert). Davor 2026-10-13 (Mac: Einkaufsliste per Knopf an den Essensplan im Sternenplan, Deploy), 2026-10-11 (Mac: Essensplan-Liste, Vorrat-Warnung, Deploy; Cloud parallel: regelmäßige Einkäufe, Anlässe, Angebote, Bon-Leser), 2026-10-07 (Mac: Abgleich über Netlify Blobs, gemeinsame Budgets, Deploy; Cloud: graue Variante, Fehlerkorrektur „Öffnen“)
 
 Neue, eigenständige App, unabhängig von Miras Sternenplan. Vorbild ist ein
 Instagram-Reel von *budget.profi.store*, das eine Budget-Tabelle zeigt
@@ -299,6 +299,10 @@ Nicht übernommen aus der Vorlage: Kalender-Ansicht und das Gewohnheits-Raster.
 
 ## Was als Nächstes ansteht
 
+0. **Auszüge einlesen + Feste Abbuchungen prüfen (neu 17.11.):** Die drei
+   CSVs aus `~/Budgetplan-Sicherungen` in der App einlesen, dann unter
+   „📅 Feste Abbuchungen“ die Vorschläge bestätigen. Danach PayPal
+   Geschäftskonto und Consorsbank nachholen.
 0. **Klas ans Gemeinschaftskonto:** Ist Mareike noch auf einem Gerät
    angemeldet? Ja → dort unter „Sicherung“ → „Gemeinsam nutzen“ das
    Gemeinschaftskonto freigeben, Code erzeugen, Klas gibt ihn unter „Mit Code
@@ -342,17 +346,20 @@ Abgleich über Netlify Blobs statt Neon/Supabase (07.10.).
 
 ## Offene Punkte / Hinweise
 
-- **„Geht diesen Monat noch ab“ (Wunsch 17.11.):** Aus eingelesenen
-  Kontoauszügen regelmäßige Abbuchungen erkennen (gleicher Empfänger,
-  ähnlicher Betrag, Rhythmus monatlich/vierteljährlich/halbjährlich/jährlich,
-  ungefährer Tag), kurz bestätigen lassen, dann Karte in der Übersicht mit
-  dem, was bis Monatsende noch abgeht (Betrag + Datum, Summe). Nur **feste**
-  Beträge (Haftpflicht, Versicherungen, Abos …) – keine geschätzten
-  „ca.“-Posten wie Tanken (Mareike: „brauche ich nicht“). Abgebucht =
-  erscheint im nächsten Auszug → raus aus „offen“. Für jährliche Posten
-  einmal 12 Monate Auszüge nötig: gemeinsam über Chrome ziehen, Mareike
-  meldet sich selbst an (Passwort/TAN), Claude lädt die CSV nach Rückfrage,
-  Dateien nur nach `~/Budgetplan-Sicherungen`.
+- **„Geht diesen Monat noch ab“ – gebaut und live (17.11.):** Ansicht
+  „📅 Feste Abbuchungen“ (Link im Budget beim Import) erkennt aus den
+  eingelesenen Auszügen regelmäßige Abbuchungen (monatlich ab 3×, sonst ab 2×;
+  Verträge laut Import bis 10 % Preiserhöhung, sonst centgenau gleich).
+  Mareike bestätigt (✓ Fest / Nein) oder trägt selbst ein. Übersicht zeigt
+  „Geht im {Monat} noch ab“ mit Datum und Summe. Nur **feste** Beträge,
+  nichts Geschätztes wie Tanken (Mareike: „brauche ich nicht“).
+  Auszüge (18.11.2025–17.11.2026) liegen in `~/Budgetplan-Sicherungen`:
+  `sparkasse-gemeinschaftskonto-…csv`, `sparkasse-mareike-…csv`,
+  `paypal-privat-…csv`. Fehlen noch: **PayPal Geschäftskonto** (Bericht bei
+  PayPal angefordert, Download kam nicht an – beim Geschäfts-Login unter
+  Berichte → Kontoauszüge nachsehen) und **Consorsbank** (erst nach
+  erzwungener PIN-Änderung durch Mareike). Vorgehen: Mareike meldet sich in
+  Chrome selbst an, Claude lädt nach Rückfrage herunter.
 
 - **Angebote als Benachrichtigung (Wunsch 27.10.):** Mareike möchte von sich
   aus einen Hinweis bekommen („Das kaufst du jede Woche / auf Vorrat – ist im
